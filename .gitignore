@@ -1,0 +1,80 @@
+# Build outputs
+/bin/
+/build/
+/build-autotools/
+/build-test/
+
+# Coverage and compiler byproducts
+*.gcov
+*.gcda
+*.gcno
+
+# Demo artifacts
+salt-demo.gif
+salt-demo.mp4
+vhs/salt-demo.gif
+vhs/salt-demo.mp4
+
+# Release artifacts
+/salt-linux-amd64.tar.gz
+/SHA256SUMS
+/release-notes.md
+
+# Fuzz session logs
+fuzz-*.log
+.fuzz/
+
+# Terraform local state
+/terraform
+
+# Core dumps
+core
+core.*
+
+# Editor/system
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.backup
+
+# ---------------------------------------------------------------------------
+# GNU Autotools generated outputs — regenerate with: ./bootstrap && ./configure
+# Baseline: https://raw.githubusercontent.com/github/gitignore/main/Autotools.gitignore
+# Canonical source-of-truth files kept in git: configure.ac, Makefile.am,
+# bootstrap, m4/*.m4 (custom macros only — m4/.gitkeep preserves the dir).
+# ---------------------------------------------------------------------------
+
+# autoconf / autoheader outputs
+/configure
+/aclocal.m4
+/config.h.in
+/config.cache
+/config.guess
+/config.log
+/config.status
+/config.sub
+/config.h
+/stamp-h1
+/autoscan.log
+/autoscan-*.log
+/configure.scan
+autom4te.cache/
+
+# automake outputs
+Makefile.in
+.deps/
+.dirstamp
+
+# build-aux/ — fully populated by autoreconf -fi (AC_CONFIG_AUX_DIR)
+build-aux/
+
+# libtool (not currently used; listed for completeness per baseline)
+/libtool
+/ltmain.sh
+.libs/
+m4/libtool.m4
+m4/ltoptions.m4
+m4/ltsugar.m4
+m4/ltversion.m4
+m4/lt~obsolete.m4

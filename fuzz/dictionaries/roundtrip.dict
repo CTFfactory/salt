@@ -1,0 +1,86 @@
+# libFuzzer dictionary for fuzz_roundtrip (encrypt -> decrypt cycle verification)
+# Covers plaintext patterns, key material, and structural variations.
+
+# --- Minimal plaintexts ---
+"a"
+"hello"
+
+# --- ASCII printable range ---
+"0123456789"
+"abcdefghijklmnopqrstuvwxyz"
+"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+"!@#$%^&*()_+-=[]{}|;:,.<>?/"
+
+# --- Whitespace patterns ---
+" "
+"   "
+"\x09"
+"\x0a"
+"\x0d"
+"\x09\x0a\x0d\x20"
+
+# --- NUL bytes (valid plaintext) ---
+"\x00"
+"\x00\x00\x00\x00"
+"prefix\x00suffix"
+
+# --- Binary patterns ---
+"\xff"
+"\xff\xfe\xfd\xfc"
+"\x00\xff\x00\xff"
+
+# --- Base64 alphabet (key material encoding) ---
+"="
+"=="
+"+"
+"/"
+"-"
+"_"
+"AAAA"
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
+# --- JSON special characters in plaintext ---
+"\""
+"\\"
+"{"
+"}"
+"["
+"]"
+":"
+","
+
+# --- Unicode in plaintext (valid UTF-8) ---
+"\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e"
+"\xef\xbf\xbd"
+"\x63\x61\x66\xc3\xa9"
+
+# --- Repeated patterns (compression/entropy tests) ---
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+"0000000000000000000000000000000000000000000000000000000000000000"
+
+# --- Boundary-sized plaintext seeds ---
+# libFuzzer mutates these repeated patterns toward configured max_len limits.
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+
+# --- Control characters in plaintext ---
+"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
+"\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f"
+
+# --- Mixed content ---
+"hello\x00world"
+"line1\x0aline2\x0aline3"
+"tab\x09separated\x09values"
+
+# --- Control-byte tuples for (key_mode, output_mode, ciphertext/plaintext mode) ---
+"\x30\x30\x30"
+"\x31\x31\x31"
+"\x32\x32\x32"
+"\x33\x33\x33"
+"\x34\x34\x34"
+"\x35\x35\x35"
+"\x36\x36\x36"
+"\x37\x37\x37"

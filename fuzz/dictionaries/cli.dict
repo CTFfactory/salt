@@ -1,0 +1,80 @@
+# libFuzzer dictionary for fuzz_cli (full CLI argv + stdin path)
+# Tokens cover every short/long option, accepted enum values, and common
+# argv separators that drive distinct branches in main.c / cli_parse.c.
+
+# --- Short flags ---
+"-k"
+"-i"
+"-o"
+"-f"
+"-h"
+"-V"
+"--"
+"-"
+
+# --- Long flags ---
+"--key"
+"--key-id"
+"--output"
+"--key-format"
+"--help"
+"--version"
+
+# --- "=" forms ---
+"--key="
+"--key-id="
+"--output="
+"--key-format="
+
+# --- Output format enum (main.c strcmp set) ---
+"text"
+"json"
+
+# --- Key format enum ---
+"auto"
+"base64"
+
+# --- JSON key-object payloads as argv values ---
+"{\"key\":\"\"}"
+"{\"key\":\"AAAA\"}"
+"{\"key\":\"AAAA\",\"key_id\":\"\"}"
+"{\"key\":\"AAAA\",\"key_id\":\"123\"}"
+"{\"key_id\":\"123\"}"
+
+# --- JSON structural in args ---
+"{}"
+"[]"
+"\"\""
+"null"
+","
+":"
+
+# --- base64 sample values ---
+"AAAA"
+"AAAAAAAA"
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+"="
+"=="
+
+# --- key_id values that exercise validation ---
+"0"
+"123"
+"abc"
+"abc123"
+
+# --- whitespace / special ---
+" "
+"\x09"
+"\x0a"
+"\x0d"
+"\x00"
+
+# --- Plaintext samples (positional arg) ---
+"hello"
+"a"
+
+# --- Unknown / typo flags to exercise reject paths ---
+"--unknown"
+"-x"
+"---"

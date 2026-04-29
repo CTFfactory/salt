@@ -1,0 +1,49 @@
+# Dependabot configuration for automated dependency updates
+#
+# GitHub Actions pinning strategy:
+# - Dependabot will maintain SHA pinning when actions are already pinned to commit SHAs
+# - Version comments (e.g., "# v6.0.2") will be preserved through updates
+# - Dependabot PRs will update both the SHA and the version comment atomically
+#
+# This configuration is compatible with the repository's strict SHA-pinning
+# conventions documented in .github/instructions/dependency-pinning.instructions.md
+#
+# Limitations:
+# - APT package versions (defined in workflow env vars) are not managed by Dependabot
+# - Docker digest pins must be updated manually or via separate tooling
+# - actionlint SHA256 in Makefile must be updated manually when version changes
+#
+# Related documentation:
+# - .github/instructions/dependency-pinning.instructions.md
+# - .github/agents/dependency-pinning-expert.agent.md
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "UTC"
+    # Modest PR limits to avoid notification spam and keep review workload manageable
+    open-pull-requests-limit: 3
+    # Label PRs for triage and security tracking
+    labels:
+      - "dependencies"
+      - "security"
+    # Group minor and patch updates to reduce PR volume
+    groups:
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Commit message convention
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    # Reviewer assignment (optional - configure team/user if desired)
+    # reviewers:
+    #   - "CTFfactory/maintainers"
