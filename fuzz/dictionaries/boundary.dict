@@ -1,0 +1,58 @@
+# libFuzzer dictionary for fuzz_boundary (documented boundary tests)
+# Exercising edge cases for size limits, base64 padding, NUL bytes, and control chars.
+
+# --- Minimal inputs ---
+
+# --- Base64 padding variants (valid 32-byte key examples) ---
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa/w="
+
+# --- Plaintext size boundaries (GitHub Actions caps at 48 KiB) ---
+"\x00"
+"\x00\x00\x00\x00"
+
+# --- Control character boundaries (U+0000–U+001F, should be rejected in JSON strings) ---
+"\x01"
+"\x0a"
+"\x0d"
+"\x1f"
+
+# --- NUL-padding attacks ---
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+
+# --- Whitespace boundary cases ---
+" "
+"\x09"
+"\x0a"
+"\x0d"
+"   "
+
+# --- Key size limits (32 bytes base64-encoded = 44 or 43 chars depending on padding) ---
+"AAAA"
+"AAAAAAAA"
+"AAAAAAAAAAAAAAAA"
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
+# --- JSON structure with empty values ---
+"{}"
+"{\"key\":\"\"}"
+"{\"key\":\"\",\"key_id\":\"\"}"
+
+# --- Minimal valid plaintext ---
+"a"
+"hello"
+
+# --- Unicode boundary markers ---
+"\\u0000"
+"\\u001f"
+"\\u0020"
+"\\u007f"
+
+# --- Escape sequences at boundaries ---
+"\\\""
+"\\\\"
+"\\n"
+"\\t"

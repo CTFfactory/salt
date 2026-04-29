@@ -1,0 +1,290 @@
+.TH SALT 1 "2026-04-30" "salt" "User Commands"
+.SH NAME
+salt \- encrypt plaintext with libsodium sealed boxes for GitHub secrets
+.SH SYNOPSIS
+.B salt
+.RI [ OPTIONS ]
+.RI [ PLAINTEXT ]
+.SH DESCRIPTION
+.B salt
+encrypts plaintext with libsodium sealed boxes and writes encrypted output to stdout.
+
+The public key is provided with
+.BR --key / -k
+and may be a base64 key, a JSON object containing key metadata, or
+.B -
+to read key input from stdin.
+
+The plaintext may be provided as a positional argument or via stdin.
+
+Output mode defaults to base64 text and can be switched to JSON for REST payload workflows.
+
+Errors are written to stderr.
+.SH OPTIONS
+.TP
+.BI -k " VALUE", " --key " VALUE
+Required key input. VALUE may be:
+.RS
+.IP \[bu] 2
+base64 public key string
+.IP \[bu] 2
+JSON object string with
+.B key
+and optional
+.B key_id
+.IP \[bu] 2
+.B -
+to read key input from stdin
+.RE
+
+JSON key parsing is strict: only
+.B key
+and optional
+.B key_id
+fields are accepted.
+.TP
+.BI -i " ID", " --key-id " ID
+Optional key ID override. Required for
+.B --output json
+when the key source does not provide
+.BR key_id .
+.TP
+.BI -o " MODE", " --output " MODE
+Output format:
+.B text
+or
+.BR json .
+Default is
+.BR text .
+.TP
+.BI -f " MODE", " --key-format " MODE
+Key parser mode:
+.B auto
+,
+.B base64
+,
+or
+.BR json .
+Default is
+.BR auto .
+.TP
+.BR -h , " --help"
+Show usage information and exit successfully.
+.TP
+.BR -V , " --version"
+Show version information and exit successfully.
+.SH INPUT RULES
+.TP
+.I PLAINTEXT
+If omitted or set to
+.B -
+, plaintext is read from stdin.
+.TP
+.B --key -
+Reads key input from stdin.
+.PP
+For deterministic parsing,
+.B salt
+rejects reading both key and plaintext from stdin in the same invocation.
+.PP
+Plaintext input must be between 1 byte and 48 KiB, matching the GitHub
+Actions per-secret value limit. The underlying
+.BR salt_seal_base64 (3)
+library accepts up to 1 MiB.
+Key input read from stdin is limited to 16 KiB.
+.PP
+Sensitive plaintext should be passed via stdin; positional arguments are
+visible in process listings
+.RB ( ps (1),
+.IR /proc/<pid>/cmdline ).
+As defense-in-depth the production binary copies positional plaintext into
+mlock'd memory and zeroes the original
+.I argv
+slot in place after the copy, but stdin remains the recommended input path.
+.PP
+The production
+.B salt
+binary disables core dumps via
+.BR setrlimit (2)
+.RB ( RLIMIT_CORE
+= 0) and
+.BR prctl (2)
+.RB ( PR_SET_DUMPABLE
+= 0 on Linux), and locks transient secret buffers in resident memory with
+.BR sodium_mlock (3)
+so they cannot be paged to swap or extracted from a core file. Locking
+failures (typically a low
+.BR RLIMIT_MEMLOCK
+inside containers) are non-fatal and fall back to plain
+.BR sodium_memzero (3)
+on release.
+.PP
+To avoid mlock warnings or increase security in restricted environments, raise
+the locked-memory limit with
+.B ulimit -l unlimited
+(requires privilege) or configure your container runtime to allow higher
+.BR RLIMIT_MEMLOCK
+values.
+.PP
+The tool validates inputs, decodes the key, encrypts using
+.BR crypto_box_seal (3),
+and base64-encodes ciphertext for output.
+
+.SH OUTPUT MODES
+.TP
+.B text
+Print ciphertext as base64 on a single line.
+.TP
+.B json
+Print JSON object with:
+.RS
+.IP \[bu] 2
+.B encrypted_value
+(base64-encoded ciphertext)
+.IP \[bu] 2
+.B key_id
+.RE
+
+In JSON mode,
+.B key_id
+must be available from key JSON input or
+.BR --key-id .
+
+Use
+.B text
+mode for shell pipelines when another tool manages the
+.BR key_id .
+Use
+.B json
+mode when constructing GitHub Actions Secrets API payloads or other REST
+requests that require both
+.B encrypted_value
+and
+.BR key_id
+in a single JSON object.
+
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Input or usage error.
+.TP
+.B 2
+Cryptographic error.
+.TP
+.B 3
+Internal error.
+.TP
+.B 4
+Runtime I/O or output-stream failure.
+.TP
+.B 5
+Signal-driven interruption.
+.SH EXAMPLES
+.nf
+# Base64 key, positional plaintext, output ciphertext as base64 text
+salt -k "2Sg8iYjAxxmI2LvUXpJjkYrMxURPc8r+dB7TJyvv1234" "hello"
+
+# JSON key object and JSON output with encrypted_value and key_id
+salt --output json --key '{"key_id":"012345678912345678","key":"2Sg8iYjAxxmI2LvUXpJjkYrMxURPc8r+dB7TJyvv1234"}' "Hello World!"
+
+# Key from stdin
+echo '{"key_id":"012345678912345678","key":"2Sg8iYjAxxmI2LvUXpJjkYrMxURPc8r+dB7TJyvv1234"}' | salt --output json --key - "Hello World!"
+
+# Plaintext from stdin
+echo 'Hello World!' | salt --output json --key '{"key_id":"012345678912345678","key":"2Sg8iYjAxxmI2LvUXpJjkYrMxURPc8r+dB7TJyvv1234"}' -
+
+# Safer bearer-header helper for GitHub API calls
+readonly GITHUB_API_VERSION="2022-11-28"
+auth_header_fd() { printf 'Authorization: Bearer %s\n' "${GITHUB_TOKEN}"; }
+
+# GitHub repository secret workflow (key fetch -> encrypt -> PUT)
+KEY_RESPONSE="$(curl -sS -L -w '\n%{http_code}' \
+-H "Accept: application/vnd.github+json" \
+-H @<(auth_header_fd) \
+-H "X-GitHub-Api-Version: ${GITHUB_API_VERSION}" \
+"https://api.github.com/repos/${OWNER}/${REPO}/actions/secrets/public-key")" && \
+KEY_STATUS="${KEY_RESPONSE##*$'\n'}" && \
+KEY_JSON="${KEY_RESPONSE%$'\n'*}" && \
+[ "${KEY_STATUS}" = "200" ] && \
+KEY_ID="$(printf '%s' "${KEY_JSON}" | jq -r '.key_id')" && \
+PUB_KEY="$(printf '%s' "${KEY_JSON}" | jq -r '.key')" && \
+SALT_JSON="$(salt --output json --key "${PUB_KEY}" --key-id "${KEY_ID}" - <"${SECRET_VALUE_FILE}")" && \
+printf '%s' "${SALT_JSON}" | jq -c '{encrypted_value:.encrypted_value,key_id:.key_id}' | \
+curl -sS -L -o /dev/null -w '%{http_code}' -X PUT \
+-H "Accept: application/vnd.github+json" \
+-H "Content-Type: application/json" \
+-H @<(auth_header_fd) \
+-H "X-GitHub-Api-Version: ${GITHUB_API_VERSION}" \
+"https://api.github.com/repos/${OWNER}/${REPO}/actions/secrets/${SECRET_NAME}" \
+--data-binary @-
+.fi
+.SH GITHUB REST API NOTES
+Use GitHub REST API version
+.BR 2022-11-28
+with the Actions Secrets endpoints.
+.PP
+Required token permissions depend on the secret scope:
+.TP
+.B Repository secrets
+Fine-grained token: repository
+.B Secrets: write
+permission. Classic token: usually
+.B repo
+for private repositories or
+.B public_repo
+for public repositories.
+.TP
+.B Environment secrets
+Fine-grained token: repository
+.B Environments: write
+permission. Classic token:
+.BR repo .
+.TP
+.B Organization secrets
+Fine-grained token: organization
+.B Secrets: write
+permission. Classic token:
+.BR admin:org .
+.PP
+GitHub Actions secret values are capped at 48 KiB (49152 bytes). Enforce this
+before encryption so oversized plaintext fails locally rather than producing a
+payload that the GitHub API rejects.
+.PP
+When assembling REST requests, pipe
+.B salt --output json
+to
+.B jq
+and then to
+.B curl --data-binary @-
+so
+.BR encrypted_value ,
+.BR key_id ,
+and the final JSON body are not exposed through command-line arguments.
+
+.SH SEE ALSO
+.BR crypto_box_seal (3),
+.BR sodium_mlock (3),
+.BR sodium_memzero (3),
+.BR setrlimit (2),
+.BR prctl (2),
+.BR ps (1),
+.BR curl (1),
+.BR jq (1)
+.PP
+libsodium sealed boxes documentation:
+.I https://doc.libsodium.org/public-key_cryptography/sealed_boxes
+.PP
+GitHub Actions Secrets API:
+.I https://docs.github.com/en/rest/actions/secrets
+.PP
+Project repository:
+.I https://github.com/CTFfactory/salt
+.PP
+Project documentation:
+.IR README.md ,
+.IR SECURITY.md ,
+.IR CONTRIBUTING.md ,
+.IR TESTING.md

@@ -1,0 +1,52 @@
+body {
+    background: #fdf6e3;
+    color: #657b83;
+}
+
+a, a:visited {
+    color: #268bd2;
+}
+
+a:hover {
+    color: #2aa198;
+}
+
+table {
+    border-color: #eee8d5;
+}
+
+th, td {
+    border-color: #eee8d5;
+}
+
+th {
+    background: #eee8d5;
+    color: #586e75;
+}
+
+tr:nth-child(even) {
+    background: #f5efdc;
+}
+
+code, pre {
+    background: #eee8d5;
+    color: #586e75;
+}
+
+.coverage-low,
+.bg-danger {
+    background: #dc322f !important;
+    color: #fdf6e3 !important;
+}
+
+.coverage-medium,
+.bg-warning {
+    background: #b58900 !important;
+    color: #fdf6e3 !important;
+}
+
+.coverage-high,
+.bg-success {
+    background: #859900 !important;
+    color: #fdf6e3 !important;
+}
