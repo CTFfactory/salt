@@ -56,7 +56,7 @@ jobs:
             make="${MAKE_VERSION}"
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@4e828ff8d448a8a6e532957b1811f387a63867e8  # v4.31.2
+        uses: github/codeql-action/init@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v4.31.2
         with:
           languages: c-cpp
           queries: security-and-quality
@@ -76,6 +76,6 @@ jobs:
           make all test_salt
 
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@4e828ff8d448a8a6e532957b1811f387a63867e8  # v4.31.2
+        uses: github/codeql-action/analyze@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v4.31.2
         with:
           category: "/language:c-cpp"
