@@ -90,7 +90,7 @@ jobs:
           echo "OK: tag $tag is valid SemVer"
 
       - name: Cache APT archives
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: /var/cache/apt/archives
           key: apt-24.04-release-${{ env.LIBSODIUM_DEV_VERSION }}-${{ env.LIBCMOCKA_DEV_VERSION }}-${{ env.MAKE_VERSION }}-${{ env.MAN_DB_VERSION }}-${{ env.GCOVR_VERSION }}-${{ env.AUTOCONF_VERSION }}-${{ env.AUTOMAKE_VERSION }}-${{ env.LIBTOOL_VERSION }}-${{ env.PKG_CONFIG_VERSION }}
