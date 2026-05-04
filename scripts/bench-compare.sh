@@ -20,8 +20,9 @@
 #   coarse so the gate catches sustained slowdowns without failing on ordinary
 #   local or shared-runner jitter.
 #
-# Exits 0 if all current cases are within the configured regression thresholds,
-# exits 1 if any case regresses or the case set drifts, exits 2 on usage error.
+# Exits 0 if all current cases are within configured regression thresholds.
+# Exits 1 if any case regresses or the case set drifts (unless --warn-only).
+# Exits 2 on usage error.
 
 set -euo pipefail
 
@@ -88,6 +89,7 @@ if [ ! -f "$current" ]; then
     exit 2
 fi
 
+rc=0
 awk -v baseline="$baseline" -v current="$current" \
     -v median_threshold="$median_threshold" -v p95_threshold="$p95_threshold" \
     -v include_regex="$include_regex" -v threshold_overrides="$threshold_overrides" '
@@ -213,8 +215,7 @@ function extract(line, key,    re, m, s, e, val) {
     gsub(/[ \t]/, "", val)
     return val
 }
-'
-rc=$?
+' || rc=$?
 if [ "$warn_only" -eq 1 ] && [ "$rc" -eq 1 ]; then
     echo "bench-compare: WARN-ONLY mode active; regressions reported but not failing" >&2
     exit 0

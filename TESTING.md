@@ -82,6 +82,61 @@ make coverage-html
   `coverage/dark/` report trees so release consumers can inspect coverage output
   without rebuilding locally.
 
+### Enterprise coverage toolchain: `grcov`, `llvm-cov`, and `lcov`
+
+The enforced repository gate remains `make coverage-check` (gcovr + gcov JSON
+for block checks), because it is deterministic, fast, and already wired into
+`make ci`. For enterprise reporting, audit, and interoperability workflows,
+`grcov`, `llvm-cov`, and `lcov` are complementary tools rather than mutually
+exclusive replacements.
+
+| Tool | Strengths | Best fit in this repository |
+|---|---|---|
+| `grcov` | Fast aggregation; multi-format output (`html`, `lcov`, `cobertura`); good filtering (`--keep-only`, `--ignore`) and path remap controls | Cross-CI normalization and exporting `lcov.info`/Cobertura artifacts for external systems |
+| `llvm-cov` | Native Clang source-based coverage (`show`, `report`, `export`); rich branch/region details; optional MC/DC support in modern LLVM flows | High-fidelity compiler-native analysis, especially on Clang-focused hardening and debugging paths |
+| `lcov` + `genhtml` | Mature enterprise reporting; differential coverage, baseline/diff categorization, owner/date binning, and broad ecosystem compatibility | Governance-heavy reporting, diff-aware review gates, and archival-quality HTML reports |
+
+#### Canonical interoperability patterns
+
+1. **Current repo policy gate (required):**
+   ```sh
+   cd build/autotools
+   make coverage-check
+   ```
+2. **Optional `lcov` capture/report for broader consumers:**
+   ```sh
+   cd build/autotools
+   mkdir -p coverage
+   lcov --capture --directory . --output-file coverage/salt.info --rc branch_coverage=1
+   lcov --remove coverage/salt.info '/usr/*' '*/tests/*' --output-file coverage/salt.filtered.info --rc branch_coverage=1
+   genhtml coverage/salt.filtered.info --output-directory coverage/lcov-html --branch-coverage --function-coverage --show-details --legend
+   ```
+3. **Optional `grcov` export from coverage artifacts:**
+   ```sh
+   cd build/autotools
+   grcov . -s ../../ --keep-only '*/src/*' --ignore '*/tests/*' --branch --ignore-not-existing -t lcov -o coverage/grcov.info
+   ```
+4. **Optional Clang source-based path with `llvm-cov export`:**
+   - Build/tests must use Clang source-based coverage flags (`-fprofile-instr-generate -fcoverage-mapping`), then merge profiles with `llvm-profdata merge`.
+   - Use `llvm-cov report` for summaries and `llvm-cov export -format=lcov` (or JSON text format) for downstream systems.
+   - Use `-path-equivalence` / `-compilation-dir` controls when build and report paths differ across hosts.
+
+#### Enterprise robustness requirements
+
+- Keep one authoritative gate (`make coverage-check`) and treat alternate tools
+  as reporting/export layers to avoid metric drift between CI and release
+  documentation.
+- Normalize source paths explicitly (`--source-dir`, `--prefix-dir`,
+  `-path-equivalence`, `--substitute`) in distributed CI to prevent false
+  "missing source" noise and broken per-line annotations.
+- Preserve branch coverage in every export path (`grcov --branch`,
+  `lcov --rc branch_coverage=1`, `llvm-cov` branch summaries enabled) so
+  dashboard values match security-focused testing expectations.
+- Record exact tool versions in CI and release notes when changing coverage
+  pipelines, because parser behavior and summary math can vary by version.
+- For differential reporting at scale, prefer `lcov`/`genhtml` baseline+diff
+  workflows while retaining the repo threshold gate for pass/fail control.
+
 ## Test Methods
 
 ### Smoke testing
@@ -116,12 +171,12 @@ When a bug is fixed, prefer adding or extending a deterministic cmocka
 regression so the failure stays reproducible outside a fuzz harness.
 
 The CLI cmocka surface is organized by behavior so changes stay localized:
-`tests/test_cli_contract.c` covers top-level CLI contract and option handling,
-`tests/test_cli_io.c` covers stdin/stdout and allocation paths,
-`tests/test_cli_json.c` covers strict JSON key parsing, JSON output
+`tests/cli/test_contract.c` covers top-level CLI contract and option handling,
+`tests/cli/test_io.c` covers stdin/stdout and allocation paths,
+`tests/cli/test_json.c` covers strict JSON key parsing, JSON output
 encoding, and UTF-8 validation for RFC 8259 compliance, and
-`tests/test_cli_runtime.c` covers signal, resource, and performance-smoke paths.
-Shared fixtures live in `tests/test_cli_support.c`.
+`tests/cli/test_runtime.c` covers signal, resource, and performance-smoke paths.
+Shared fixtures live in `tests/cli/test_support.c`.
 
 Fixture and mock infrastructure:
 
@@ -194,6 +249,22 @@ make fuzz-run FUZZ_MAX_TOTAL_TIME=600
 Treat `./scripts/fuzz.sh` here as the repo-local long-budget mutation helper.
 Remotely managed or sink-backed fuzzing campaign procedures and artifact sync
 should be maintained externally to this repository.
+
+For unattended overnight campaigns with external corpus storage (e.g., GCS, S3):
+
+```sh
+FUZZ_EXTERNAL_CORPUS_RESTORE_CMD='gsutil -m cp -r gs://mybucket/fuzz/* .' \
+FUZZ_EXTERNAL_CORPUS_SYNC_CMD='gsutil -m cp -r .fuzz/* gs://mybucket/fuzz/' \
+TOTAL_BUDGET_SECONDS=86400 HARNESS_SET=all ./scripts/fuzz.sh
+```
+
+(Replace `gsutil` commands with `aws s3 sync` or equivalent for your storage backend.)
+
+**Harness development**: Use `/salt/fuzz/fuzz_common.h` as the template for new
+harnesses. It provides `fuzz_copy_cstr()` and `fuzz_seed_keypair()` helpers that
+enforce safe bounds and deterministic initialization. Review existing harnesses
+(e.g., `fuzz_parse.c`) for initialization pattern and `LLVMFuzzerTestOneInput()`
+structure.
 
 Quick start:
 

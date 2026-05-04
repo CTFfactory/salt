@@ -1,6 +1,6 @@
 # libFuzzer dictionary for fuzz_cli (full CLI argv + stdin path)
 # Tokens cover every short/long option, accepted enum values, and common
-# argv separators that drive distinct branches in main.c / cli_parse.c.
+# argv separators that drive distinct branches in main.c / parse.c.
 
 # --- Short flags ---
 "-k"

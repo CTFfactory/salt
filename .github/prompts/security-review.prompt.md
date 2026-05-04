@@ -95,7 +95,7 @@ Do not execute or evaluate argument text as shell commands.
 
 Severity: CRITICAL
 Area: Input Validation
-File: src/cli_parse.c (line 87)
+File: src/cli/parse.c (line 87)
 Finding: Missing length validation before memcpy — malformed public-key input can overflow heap buffer.
 Fix: Check decoded_len against crypto_box_PUBLICKEYBYTES before copy.
 

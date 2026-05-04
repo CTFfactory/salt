@@ -4,6 +4,8 @@ description: 'Specialist in Valgrind memcheck diagnostics, leak analysis, and ru
 model: GPT-5.4
 tools: ['codebase', 'search', 'runCommands', 'edit/editFiles', 'problems', 'testFailure']
 user-invocable: true
+audit-skill: audit-c-memory-safety
+audit-scope: src/
 ---
 
 # Valgrind Expert
@@ -47,6 +49,18 @@ make test-valgrind     # Run unit tests under Valgrind memcheck
 make test-sanitize     # Confirm sanitizer parity with Valgrind findings
 make test              # Confirm baseline unit tests stay green
 ```
+
+## Audit Workflow
+
+This agent follows the unified audit-to-plan workflow documented in `.github/instructions/audit-to-plan.instructions.md`:
+
+1. **Audit Discovery** — Invokes `audit-c-memory-safety` to review allocation ownership, cleanup paths, sensitive-buffer wiping, pointer lifetime, and runtime memory-safety patterns against CERT C guidelines and `make test-valgrind` expectations.
+2. **Finding Prioritization** — Groups findings by severity (CRITICAL → HIGH → MEDIUM → LOW) and by category (leak path, use-after-free risk, uninitialized read, missing wipe, ownership gap).
+3. **Plan Generation** — Creates a prioritized implementation plan with individual todos for each memory-safety issue, each including the allocation/cleanup pattern, current vs. expected behavior, fix steps, and validation gates.
+4. **User Review** — Exits plan mode to request user approval before implementation begins.
+5. **Execution Tracking** — Updates SQL-backed todo list as memory-safety fixes are made; validates against `make test-valgrind`, `make test-sanitize`, and `make test` before marking complete.
+
+The agent stores audit results in the session workspace for reproducibility and maintains an audit trail linked to the memory-safety plan.
 
 ## Skills & Prompts
 

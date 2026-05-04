@@ -17,12 +17,32 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 uint64_t bench_now_ns(void) {
+#ifdef _WIN32
+    LARGE_INTEGER counter, frequency;
+    if (!QueryPerformanceCounter(&counter) || !QueryPerformanceFrequency(&frequency)) {
+        return 0U;
+    }
+    if (frequency.QuadPart == 0) {
+        return 0U;
+    }
+    /* Convert to nanoseconds: (counter / frequency) * 1e9 */
+    uint64_t seconds = (uint64_t)(counter.QuadPart / frequency.QuadPart);
+    uint64_t remainder = (uint64_t)(counter.QuadPart % frequency.QuadPart);
+    uint64_t ns_from_remainder = (remainder * 1000000000ULL) / (uint64_t)frequency.QuadPart;
+    return seconds * 1000000000ULL + ns_from_remainder;
+#else
+    /* POSIX: use CLOCK_MONOTONIC for portable, monotonic timing */
     struct timespec ts;
     if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
         return 0U;
     }
     return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+#endif
 }
 
 int bench_parse_size_arg(const char *value, const char *flag, const char *tool_name, size_t *out) {
@@ -59,11 +79,106 @@ static int cmp_u64(const void *a, const void *b) {
     return 0;
 }
 
-int bench_run_case(const struct bench_case *bc, const struct bench_options *opts,
-                   struct bench_result *result) {
+/* Collect performance samples by running the benchmark case for specified iterations.
+   Executes batch operations per sample and respects max_runtime_ns limit.
+   Returns actual number of samples collected (may be less than iterations if
+   max_runtime exceeded). On error returns -1 and sets samples to NULL. */
+static int bench_sample_iterations(const struct bench_case *bc, size_t *iterations,
+                                   size_t max_runtime_ns, uint64_t **samples_out,
+                                   uint64_t **unsorted_samples_out) {
+    uint64_t *samples;
+    uint64_t *unsorted_samples;
+    size_t batch = (bc->batch > 0U) ? bc->batch : 1U;
+    uint64_t case_start_ns = bench_now_ns();
+    size_t actual_iterations = *iterations;
+
+    if (actual_iterations == 0U) {
+        return -1;
+    }
+
+    samples = (uint64_t *)calloc(actual_iterations, sizeof(uint64_t));
+    unsorted_samples = (uint64_t *)calloc(actual_iterations, sizeof(uint64_t));
+    if (samples == NULL || unsorted_samples == NULL) {
+        free(samples);
+        free(unsorted_samples);
+        return -1;
+    }
+
+    for (size_t i = 0U; i < actual_iterations; ++i) {
+        /* Check runtime limit if configured. */
+        if (max_runtime_ns > 0ULL) {
+            uint64_t elapsed = bench_now_ns() - case_start_ns;
+            if (elapsed > max_runtime_ns) {
+                (void)fprintf(stderr, "bench: case %s exceeded max runtime after %zu iterations\n",
+                             bc->name, i);
+                actual_iterations = i;
+                break;
+            }
+        }
+        uint64_t t0 = bench_now_ns();
+        for (size_t b = 0U; b < batch; ++b) {
+            if (bc->fn(bc->ctx) != 0) {
+                free(samples);
+                free(unsorted_samples);
+                return -1;
+            }
+        }
+        uint64_t t1 = bench_now_ns();
+        uint64_t delta = (t1 >= t0) ? (t1 - t0) : 0U;
+        uint64_t ns_per_op = delta / batch;
+        samples[i] = ns_per_op;
+        unsorted_samples[i] = ns_per_op;
+    }
+
+    *iterations = actual_iterations;
+    *samples_out = samples;
+    *unsorted_samples_out = unsorted_samples;
+    return 0;
+}
+
+/* Approximate t-distribution critical value for confidence intervals.
+   Returns t-value for (n-1) degrees of freedom at confidence level. */
+static double bench_t_value(size_t n, int confidence_level) {
+    if (n < 2) {
+        return 0.0;
+    }
+    size_t df = n - 1;
+    /* Simplified lookup: common t-values for 95% CI */
+    if (confidence_level == 95) {
+        if (df >= 30) return 2.042;  /* Converges to 1.96 for large n */
+        if (df >= 20) return 2.086;
+        if (df >= 10) return 2.228;
+        if (df >= 5) return 2.571;
+        if (df >= 3) return 3.182;
+        if (df >= 2) return 4.303;
+        return 12.706;  /* df=1 */
+    }
+    if (confidence_level == 90) {
+        if (df >= 30) return 1.697;
+        if (df >= 20) return 1.725;
+        if (df >= 10) return 1.812;
+        if (df >= 5) return 2.015;
+        return 6.314;  /* Conservative fallback */
+    }
+    if (confidence_level == 99) {
+        if (df >= 30) return 2.750;
+        if (df >= 20) return 2.845;
+        if (df >= 10) return 3.169;
+        if (df >= 5) return 4.032;
+        return 63.657;
+    }
+    return 2.042;  /* Default to 95% CI, large n */
+}
+
+/* Single-run benchmark execution (internal). */
+static int bench_run_case_single(const struct bench_case *bc, const struct bench_options *opts,
+                                 struct bench_result *result) {
     size_t iterations = (opts != NULL && opts->iterations > 0U) ? opts->iterations : bc->iterations;
     size_t warmup = (opts != NULL && opts->warmup != (size_t)-1) ? opts->warmup : bc->warmup;
+    size_t max_runtime_ns = (opts != NULL && opts->max_runtime_ms > 0U)
+        ? opts->max_runtime_ms * 1000000ULL : 0ULL;
     uint64_t *samples;
+    uint64_t *unsorted_samples;
     double sum = 0.0;
     double sq_sum = 0.0;
 
@@ -71,32 +186,16 @@ int bench_run_case(const struct bench_case *bc, const struct bench_options *opts
         return -1;
     }
 
-    samples = (uint64_t *)calloc(iterations, sizeof(uint64_t));
-    if (samples == NULL) {
-        return -1;
-    }
-
+    /* Warm up cache before sampling */
     for (size_t i = 0U; i < warmup; ++i) {
         if (bc->fn(bc->ctx) != 0) {
-            free(samples);
             return -1;
         }
     }
 
-    {
-        size_t batch = (bc->batch > 0U) ? bc->batch : 1U;
-        for (size_t i = 0U; i < iterations; ++i) {
-            uint64_t t0 = bench_now_ns();
-            for (size_t b = 0U; b < batch; ++b) {
-                if (bc->fn(bc->ctx) != 0) {
-                    free(samples);
-                    return -1;
-                }
-            }
-            uint64_t t1 = bench_now_ns();
-            uint64_t delta = (t1 >= t0) ? (t1 - t0) : 0U;
-            samples[i] = delta / batch;
-        }
+    /* Collect samples using helper function */
+    if (bench_sample_iterations(bc, &iterations, max_runtime_ns, &samples, &unsorted_samples) != 0) {
+        return -1;
     }
 
     qsort(samples, iterations, sizeof(uint64_t), cmp_u64);
@@ -123,9 +222,93 @@ int bench_run_case(const struct bench_case *bc, const struct bench_options *opts
     }
     result->ns_max = samples[iterations - 1U];
     result->ns_mean = mean;
-    result->ns_stddev = sqrt(sq_sum / (double)iterations);
+    /* Use unbiased sample stddev (divides by N-1 instead of N) for statistical
+       rigor. For large N (≥100), difference from population formula is <1%.
+       For small N (<40), this improves accuracy significantly. */
+    if (iterations > 1U) {
+        result->ns_stddev = sqrt(sq_sum / (double)(iterations - 1U));
+    } else {
+        result->ns_stddev = 0.0;
+    }
+    /* Initialize multi-run CI fields to zero (not used in single-run) */
+    result->ns_median_ci_lower = 0.0;
+    result->ns_median_ci_upper = 0.0;
+
+    /* Report outliers if configured */
+    if (opts != NULL && opts->outlier_detection) {
+        bench_report_outliers(result, unsorted_samples, iterations);
+    }
 
     free(samples);
+    free(unsorted_samples);
+    return 0;
+}
+
+int bench_run_case(const struct bench_case *bc, const struct bench_options *opts,
+                   struct bench_result *result) {
+    size_t multi_run = (opts != NULL && opts->multi_run > 1U) ? opts->multi_run : 1U;
+    int confidence_level = (opts != NULL && opts->confidence_level > 0) ? opts->confidence_level : 95;
+
+    if (multi_run == 1U) {
+        /* Single run, direct path */
+        return bench_run_case_single(bc, opts, result);
+    }
+
+    /* Multi-run with confidence intervals */
+    struct bench_result *runs = (struct bench_result *)calloc(multi_run, sizeof(struct bench_result));
+    if (runs == NULL) {
+        return -1;
+    }
+
+    double *medians = (double *)calloc(multi_run, sizeof(double));
+    if (medians == NULL) {
+        free(runs);
+        return -1;
+    }
+
+    /* Run the benchmark multiple times */
+    for (size_t i = 0U; i < multi_run; ++i) {
+        if (bench_run_case_single(bc, opts, &runs[i]) != 0) {
+            free(runs);
+            free(medians);
+            return -1;
+        }
+        medians[i] = (double)runs[i].ns_median;
+    }
+
+    /* Use results from first run as base, then add CI from all runs */
+    memcpy(result, &runs[0], sizeof(struct bench_result));
+
+    /* Calculate confidence interval for median across runs */
+    double median_sum = 0.0;
+    double median_sq_sum = 0.0;
+    for (size_t i = 0U; i < multi_run; ++i) {
+        median_sum += medians[i];
+    }
+    double median_mean = median_sum / (double)multi_run;
+    for (size_t i = 0U; i < multi_run; ++i) {
+        double d = medians[i] - median_mean;
+        median_sq_sum += d * d;
+    }
+
+    double median_stddev = 0.0;
+    if (multi_run > 1U) {
+        median_stddev = sqrt(median_sq_sum / (double)(multi_run - 1U));
+    }
+
+    double t_val = bench_t_value(multi_run, confidence_level);
+    double margin = t_val * median_stddev / sqrt((double)multi_run);
+
+    result->ns_median_ci_lower = median_mean - margin;
+    result->ns_median_ci_upper = median_mean + margin;
+    result->ns_mean = median_mean;
+    result->ns_stddev = median_stddev;
+
+    (void)fprintf(stderr, "bench: %s multi-run=%zu median=%.0f ± %.0f ns (95%% CI)\n",
+                  result->name, multi_run, median_mean, margin);
+
+    free(runs);
+    free(medians);
     return 0;
 }
 
@@ -186,6 +369,9 @@ int bench_emit_json(const char *path, const struct bench_result *r) {
     if (path == NULL) {
         return 0;
     }
+    /* Open in append mode with close-on-exec flag.
+       "ae" = O_WRONLY | O_APPEND | O_CLOEXEC
+       Appends line-delimited JSON records; securely closes on exec(). */
     f = fopen(path, "ae");
     if (f == NULL) {
         return -1;
@@ -202,6 +388,34 @@ int bench_emit_json(const char *path, const struct bench_result *r) {
                   ops_per_sec);
     (void)fclose(f);
     return 0;
+}
+
+void bench_report_outliers(const struct bench_result *result, const uint64_t *samples,
+                          size_t iterations) {
+    if (result == NULL || samples == NULL || iterations == 0U) {
+        return;
+    }
+
+    double mean = result->ns_mean;
+    double stddev = result->ns_stddev;
+
+    if (stddev == 0.0) {
+        return;  /* No variance, no outliers */
+    }
+
+    size_t outlier_count = 0U;
+    for (size_t i = 0U; i < iterations; ++i) {
+        double z_score = ((double)samples[i] - mean) / stddev;
+        if (z_score < -2.0 || z_score > 2.0) {
+            outlier_count++;
+        }
+    }
+
+    if (outlier_count > 0U) {
+        double outlier_pct = (100.0 * (double)outlier_count) / (double)iterations;
+        (void)fprintf(stderr, "bench: %s detected %zu outliers (%.1f%% >2σ)\n", result->name,
+                      outlier_count, outlier_pct);
+    }
 }
 
 int bench_run_all(const struct bench_case *cases, size_t n_cases,

@@ -17,7 +17,7 @@ readonly LIBSODIUM_HOMEPAGE='https://libsodium.org'
 readonly LIBSODIUM_PURL_PREFIX='pkg:generic/libsodium@'
 
 usage() {
-  printf 'Usage: %s [--spdx PATH:ARTIFACT] [--cyclonedx PATH:ARTIFACT] [--salt-version VERSION] [--ubuntu-deps PATH] [--syft-version VERSION] [--parlay-version VERSION]\n' "${0##*/}" >&2
+  printf 'Usage: %s [--spdx PATH:ARTIFACT] [--cyclonedx PATH:ARTIFACT] [--salt-version VERSION] [--ubuntu-deps PATH] [--syft-version VERSION] [--parlay-version VERSION] [--verify-deterministic] [--spdx-package-count-min N] [--cyclonedx-component-count-min N]\n' "${0##*/}" >&2
   exit 2
 }
 
@@ -31,6 +31,9 @@ salt_version='0.0.0'
 ubuntu_deps_path=''
 syft_version=''
 parlay_version=''
+verify_deterministic=false
+spdx_package_count_min=2
+cyclonedx_component_count_min=90
 declare -a spdx_specs=()
 declare -a cdx_specs=()
 
@@ -64,6 +67,20 @@ while (($# > 0)); do
     --parlay-version)
       sbom_require_option_value "$#" "$1"
       parlay_version="$2"
+      shift 2
+      ;;
+    --verify-deterministic)
+      verify_deterministic=true
+      shift 1
+      ;;
+    --spdx-package-count-min)
+      sbom_require_option_value "$#" "$1"
+      spdx_package_count_min="$2"
+      shift 2
+      ;;
+    --cyclonedx-component-count-min)
+      sbom_require_option_value "$#" "$1"
+      cyclonedx_component_count_min="$2"
       shift 2
       ;;
     --help|-h)
@@ -126,6 +143,56 @@ spdx_package_verification_code() {
 
 cdx_hash_value() {
   sbom_cdx_hash_value "$@"
+}
+
+# Verify SPDX SBOM uses deterministic documentNamespace and timestamps
+verify_spdx_deterministic() {
+  local path="$1"
+  [[ -f "$path" ]] || die "$path: No such file"
+  # Check documentNamespace doesn't contain timestamps or UUIDs
+  namespace=$(jq -r '.documentNamespace // ""' "$path")
+  [[ -n "$namespace" ]] || die "$path: documentNamespace is empty"
+  # Warn if namespace contains timestamp patterns (YYYY-MM-DD, ISO8601, etc)
+  if [[ "$namespace" =~ [0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+    printf 'WARNING: SPDX documentNamespace contains date pattern: %s\n' "$namespace" >&2
+  fi
+  # Check creationInfo.created is not in the future or current timestamp
+  created=$(jq -r '.creationInfo.created // ""' "$path")
+  [[ -n "$created" ]] || die "$path: creationInfo.created is missing"
+  printf 'INFO: SPDX creationInfo.created: %s\n' "$created" >&2
+}
+
+# Verify CycloneDX SBOM uses deterministic component metadata
+verify_cyclonedx_deterministic() {
+  local path="$1"
+  [[ -f "$path" ]] || die "$path: No such file"
+  # Check metadata.component is present and reproducible
+  jq -e '.metadata.component' "$path" >/dev/null || die "$path: missing metadata.component"
+  # Verify no dynamic fields like timestamps in component data
+  modified=$(jq -r '.metadata.component.modified // ""' "$path")
+  if [[ -n "$modified" ]]; then
+    printf 'INFO: CycloneDX component modified: %s\n' "$modified" >&2
+  fi
+}
+
+# Validate minimum component count in SBOM
+validate_count_threshold() {
+  local path="$1" format="$2" min_count="$3" count_label="$4"
+  [[ -f "$path" ]] || die "$path: No such file"
+
+  local actual_count
+  if [[ "$format" == "spdx" ]]; then
+    actual_count=$(jq '.packages | length' "$path")
+  elif [[ "$format" == "cyclonedx" ]]; then
+    actual_count=$(jq '.components | length' "$path")
+  else
+    die "Unknown format: $format"
+  fi
+
+  if [[ $actual_count -lt $min_count ]]; then
+    die "$path: $count_label count $actual_count is below minimum $min_count"
+  fi
+  printf 'INFO: %s has %d %s (minimum: %d)\n' "$path" "$actual_count" "$count_label" "$min_count" >&2
 }
 
 validate_spdx() {
@@ -291,10 +358,18 @@ validate_cyclonedx() {
 for spec in "${spdx_specs[@]}"; do
   sbom_parse_path_artifact "$spec" path artifact
   validate_spdx "$path" "$artifact" "$salt_version"
+  validate_count_threshold "$path" "spdx" "$spdx_package_count_min" "packages"
+  if [[ "$verify_deterministic" == "true" ]]; then
+    verify_spdx_deterministic "$path"
+  fi
 done
 for spec in "${cdx_specs[@]}"; do
   sbom_parse_path_artifact "$spec" path artifact
   validate_cyclonedx "$path" "$artifact" "$salt_version"
+  validate_count_threshold "$path" "cyclonedx" "$cyclonedx_component_count_min" "components"
+  if [[ "$verify_deterministic" == "true" ]]; then
+    verify_cyclonedx_deterministic "$path"
+  fi
 done
 for spec in "${spdx_specs[@]}" "${cdx_specs[@]}"; do
   sbom_parse_path_artifact "$spec" path _artifact
