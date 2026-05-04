@@ -51,10 +51,35 @@ sudo make install
 
 ```sh
 sudo apt-get update
-sudo apt-get install -y libsodium-dev libcmocka-dev autoconf automake libtool pkg-config make man-db jq curl
+sudo apt-get install -y build-essential libsodium-dev libcmocka-dev autoconf automake libtool pkg-config make man-db jq curl
 ```
 
 Then run the canonical flow above.
+
+## CI, Release, and Actions Requirements
+
+Running the full CI matrix locally (`make ci`), generating releases, or editing GitHub Actions workflows requires additional tooling.
+
+### Ubuntu/Debian CI Tools
+
+```sh
+sudo apt-get install -y \
+    clang-18 clang-tidy-18 clang-format-18 \
+    cppcheck \
+    shellcheck \
+    codespell \
+    valgrind \
+    gcovr \
+    yamllint \
+    python3-yaml
+```
+
+External binary dependencies:
+- **[actionlint](https://github.com/rhysd/actionlint)**: Run automatically by `make lint` via the Makefile, pinned under `build/tools/actionlint`.
+- **[vhs](https://github.com/charmbracelet/vhs)**: Used for deterministic terminal demo tape execution.
+- **[syft](https://github.com/anchore/syft)**: Used by `make sbom` for release cycle metadata generation.
+
+See [`docs/ubuntu-packages.md`](docs/ubuntu-packages.md) for more details on fuzzing (AFL++ / libFuzzer), compiler matrices, and optional developer ergonomics.
 
 ### Generic Linux
 
@@ -135,6 +160,61 @@ make bench-check
 ```
 
 Detailed test and fuzz workflows are maintained in **[TESTING.md](TESTING.md)**.
+
+## Release Verification Logs
+
+When building releases locally or debugging CI/CD release workflows, capture comprehensive build logs for reliable debugging and audit trails.
+
+### Capturing Full Release Logs
+
+To capture the complete release build including all tool versions and compiler output:
+
+```sh
+cd build/autotools
+make ci 2>&1 | tee release.log
+make release SALT_VERSION=0.0.0 2>&1 | tee -a release.log
+make sbom SBOM_VERSION=0.0.0 SBOM_SOURCE_REF=refs/tags/v0.0.0 2>&1 | tee -a release.log
+```
+
+The `2>&1` redirects both stdout and stderr, and `tee` writes to both the log file and terminal so you can monitor progress while preserving all output.
+
+### Including in Bug Reports
+
+When reporting release or build issues, include:
+
+1. Full release log (especially `make ci` and `make release` output)
+2. Build environment details:
+   ```sh
+   uname -a
+   gcc --version
+   autoconf --version
+   automake --version
+   libtool --version
+   pkg-config --version
+   ```
+3. Key tool versions:
+   ```sh
+   libsodium --version  # or pkg-config --modversion libsodium
+   ```
+4. Output of configuration step:
+   ```sh
+   cd build/autotools && ../../configure --enable-tests --version
+   ```
+
+### Example: Debugging a Failing Release
+
+```sh
+cd build/autotools
+# Run with verbose output
+make clean
+../../configure --enable-tests --enable-debug
+make V=1 2>&1 | tee build.log
+make check 2>&1 | tee -a build.log
+make ci 2>&1 | tee -a build.log
+# Attach build.log to your issue
+```
+
+This captures Autotools configuration details, compiler flags, test output, and any warnings or errors in a single comprehensive log.
 
 ## Install Prefixes
 

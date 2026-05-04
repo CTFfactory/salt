@@ -4,7 +4,7 @@ description: 'Reviews and automates changelog, versioning, and release workflows
 model: Claude Sonnet 4.5
 tools: ['codebase', 'search', 'runCommands', 'fetch', 'problems', 'edit/editFiles']
 user-invocable: true
-agents: ['cicd-pipeline-architect', 'dependency-pinning-expert', 'se-technical-writer', 'e2e-qa-engineer', 'cli-ux-designer']
+agents: ['cicd-pipeline-architect', 'dependency-pinning-expert', 'release-signing-attestation-expert', 'se-technical-writer', 'e2e-qa-engineer', 'cli-ux-designer']
 handoffs:
   - label: Sync CI Release Flow
     agent: cicd-pipeline-architect
@@ -12,6 +12,9 @@ handoffs:
   - label: Refresh Release Pins
     agent: dependency-pinning-expert
     prompt: Update pinned release dependencies in workflows and Makefiles before cutover.
+  - label: Add Signatures and Provenance
+    agent: release-signing-attestation-expert
+    prompt: Design artifact signing and attestation steps for release assets with least-privilege permissions.
   - label: Refine Changelog Narrative
     agent: se-technical-writer
     prompt: Improve release notes and changelog readability while preserving technical correctness.
