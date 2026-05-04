@@ -8,7 +8,7 @@
 #define _POSIX_C_SOURCE 200809L
 /* NOLINTEND(bugprone-reserved-identifier) */
 
-#include "../src/cli_output.h"
+#include "../src/cli/output.h"
 #include "fuzz_common.h"
 
 #include <sodium.h>

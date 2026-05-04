@@ -21,7 +21,7 @@ Use these rules when changing the documented or scripted build flows for this re
 
 ## Docker Build Matrix Rules
 
-- Keep Ubuntu image variants (`docker/ubuntu/20`, `22`, `24`, `26`) behaviorally aligned unless a version-specific exception is documented.
+- Keep Ubuntu image variants (`docker/ubuntu/22`, `24`, `26`) behaviorally aligned unless a version-specific exception is documented.
 - Pin package installation behavior to deterministic `apt-get` flows (`apt-get update` + non-interactive install in one layer) and clean package lists to limit image drift.
 - Ensure Dockerfiles compile and run the same GNU build/test sequence described in project docs.
 

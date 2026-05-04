@@ -4,11 +4,14 @@ description: 'Designs and validates Make and GitHub Actions pipelines for this C
 model: GPT-5.4
 tools: ['codebase', 'search', 'runCommands', 'edit/editFiles', 'testFailure', 'problems', 'usages']
 user-invocable: true
-agents: ['release-automation-expert', 'dependency-pinning-expert', 'devops-expert', 'bash-script-expert', 'e2e-qa-engineer']
+agents: ['release-automation-expert', 'release-signing-attestation-expert', 'dependency-pinning-expert', 'devops-expert', 'bash-script-expert', 'e2e-qa-engineer']
 handoffs:
   - label: Validate Release Gate
     agent: release-automation-expert
     prompt: Validate release workflow, changelog impact, and tag/version automation.
+  - label: Add Release Signatures
+    agent: release-signing-attestation-expert
+    prompt: Define GPG signing and provenance attestation steps for release artifacts and Debian packages.
   - label: Refresh Pinned Dependencies
     agent: dependency-pinning-expert
     prompt: Audit and update pinned workflow and tool dependencies.

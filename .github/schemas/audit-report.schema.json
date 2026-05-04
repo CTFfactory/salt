@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Audit Report",
+  "description": "Unified schema for agent domain audits (implementation weaknesses, design flaws, code smells, etc.)",
+  "type": "object",
+  "required": ["agent", "audit_skill", "timestamp", "scope", "findings", "summary"],
+  "properties": {
+    "agent": {
+      "type": "string",
+      "description": "Name of the agent that performed the audit (e.g., 'Implementation Secure C Expert')"
+    },
+    "audit_skill": {
+      "type": "string",
+      "description": "Name of the audit skill invoked (e.g., 'audit-implementation-weaknesses')"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when audit was performed"
+    },
+    "scope": {
+      "type": "string",
+      "description": "Scope of audit (e.g., 'src/', 'include/', specific file or module)"
+    },
+    "audit_args": {
+      "type": "object",
+      "description": "Optional audit arguments (e.g., CWE focus, severity floor)",
+      "properties": {
+        "cwe_focus": {
+          "type": "string",
+          "enum": ["all", "bounds", "integer", "pointer", "return-value", "sensitive-buffer", "design", "code-smell", "config"],
+          "description": "Specific weakness class focus, or 'all' for comprehensive scan"
+        },
+        "severity_floor": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+          "default": "LOW",
+          "description": "Minimum severity level to report"
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "description": "Array of individual findings, sorted by severity (CRITICAL first)",
+      "items": {
+        "type": "object",
+        "required": ["severity", "file", "description"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+            "description": "Severity level of this finding"
+          },
+          "cwe": {
+            "type": "string",
+            "pattern": "^CWE-[0-9]+$",
+            "description": "CWE identifier (e.g., 'CWE-476')"
+          },
+          "cert_rule": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}[0-9]{2}-C$",
+            "description": "CERT-C rule identifier (e.g., 'MEM32-C', 'INT30-C')"
+          },
+          "category": {
+            "type": "string",
+            "description": "High-level finding category (e.g., 'Resource Lifetime', 'Bounds Check', 'Code Smell')"
+          },
+          "file": {
+            "type": "string",
+            "description": "File path relative to repository root"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Line number where finding occurs (optional for multi-line findings)"
+          },
+          "column": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Column number (optional)"
+          },
+          "description": {
+            "type": "string",
+            "description": "One-sentence human-readable description of the finding"
+          },
+          "evidence": {
+            "type": "string",
+            "description": "Code snippet or concrete evidence from the codebase (optional)"
+          },
+          "fix": {
+            "type": "string",
+            "description": "Proposed fix or remediation strategy"
+          },
+          "validation_gates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of validation commands to verify the fix (e.g., 'make test-sanitize')"
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Related CWE, OWASP, or CERT-C references"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total"],
+      "properties": {
+        "critical": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of CRITICAL severity findings"
+        },
+        "high": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of HIGH severity findings"
+        },
+        "medium": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of MEDIUM severity findings"
+        },
+        "low": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of LOW severity findings"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of findings"
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional additional context or guidance for the audit consumer"
+    }
+  }
+}
