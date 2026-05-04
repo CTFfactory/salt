@@ -4,7 +4,7 @@ Thank you for contributing to salt - Sodium Asymmetric/Anonymous Locking Tool.
 
 ## Prerequisites
 
-- C compiler with C11 support
+- C compiler with C17 support
 - GNU Make
 - Autotools (for building from Git)
 - libsodium development package
@@ -53,8 +53,21 @@ make ci-fast           # Fast smoke gate (recommended default)
 make ci                # Full CI gate (before requesting review)
 ```
 
-**`make ci-fast`** (2-5 min): Runs `validate-copilot`, `actionlint`, `lint-suppressions`, `lint`, `test`, and `build`.  
+**`make ci-fast`** (2-5 min): Runs `validate-copilot`, `actionlint`, `lint-suppressions`, `lint`, `test`, and `build`.
 **`make ci`** (10-30 min): Full gate with sanitizers, valgrind, coverage, QA, fuzz regression, docs, and symbol audit.
+
+For explicit local validation requirements, run these targets (from
+`build/autotools`) before requesting review:
+
+```sh
+make lint
+make test
+make test-sanitize
+make coverage-check
+make docs
+make man
+make ci
+```
 
 For complete testing documentation including test taxonomy, fuzzing workflows, coverage policy, and quality-control gates, see **[TESTING.md](TESTING.md)**.
 
@@ -116,7 +129,8 @@ git push origin vX.Y.Z
 	- `salt-static-linux-amd64.cyclonedx.json`
 	- `salt_*_amd64.deb`
 	- `SHA256SUMS`
-    (`salt-linux-amd64.tar.gz` is a template-layout archive rooted at `salt.tar/` and includes docs, helper scripts, coverage HTML, man page, and both binaries under `bin/`.)
+	- `SHA256SUMS.asc`
+    (`salt-linux-amd64.tar.gz` is a template-layout archive rooted at `salt/` and includes docs, helper scripts, coverage HTML, man page, static `salt`, and dynamic `salt-dynamic` under `bin/`.)
 9. Verify binary version output matches the tag via `salt -V`.
 
 For build artifact generation details, see **[INSTALL.md](INSTALL.md)**.
@@ -131,7 +145,7 @@ If behavior changes, update all applicable docs in the same PR:
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
 - **man/salt.1** - Man page and CLI option reference (update `.TH` date field to ISO 8601 `YYYY-MM-DD` format when content changes)
 - **examples/** - GitHub Actions secret helper scripts and workflow integration patterns
-- **CONTRIBUTING.md / [SECURITY.md](SECURITY.md) / [AGENTS.md](AGENTS.md)** - When contributor, security, or repository-operating guidance changes
+- **[CONTRIBUTING.md](CONTRIBUTING.md) / [SECURITY.md](SECURITY.md) / [AGENTS.md](AGENTS.md)** - When contributor, security, or repository-operating guidance changes
 
 When updating **examples/** helper scripts, verify that they remain aligned with GitHub REST API guidance in README.md and maintain secret-name validation, size-limit enforcement, and safe credential handling patterns.
 

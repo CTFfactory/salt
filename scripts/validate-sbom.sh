@@ -8,16 +8,24 @@ sbom_set_error_prefix 'validate-sbom'
 
 readonly PROJECT_URL='https://github.com/CTFfactory/salt'
 readonly SALT_PURL='pkg:github/CTFfactory/salt'
+readonly SALT_PKG_FILTER='.packages | first(.[] | select(.name=="salt"))'
 readonly SALT_LICENSE='Unlicense'
 readonly SALT_COPYRIGHT='Copyright 2026 CTFfactory'
 readonly SALT_SUPPLIER='CTFfactory'
 readonly SALT_SUMMARY='C CLI for libsodium sealed-box encryption.'
 readonly LIBSODIUM_LICENSE='ISC'
 readonly LIBSODIUM_HOMEPAGE='https://libsodium.org'
+readonly SHA1_HEX_LEN=40
+readonly SHA256_HEX_LEN=64
+readonly ROOT_ROLE_SALT_BUILD_TOOL='salt-build-tool'
+readonly ROOT_ROLE_LIBSODIUM_RUNTIME='libsodium-runtime'
+readonly ROOT_ROLE_LIBSODIUM_BUILD='libsodium-build'
+readonly DEFAULT_SPDX_PACKAGE_COUNT_MIN=2
+readonly DEFAULT_CYCLONEDX_COMPONENT_COUNT_MIN=90
 readonly LIBSODIUM_PURL_PREFIX='pkg:generic/libsodium@'
 
 usage() {
-  printf 'Usage: %s [--spdx PATH:ARTIFACT] [--cyclonedx PATH:ARTIFACT] [--salt-version VERSION] [--ubuntu-deps PATH] [--syft-version VERSION] [--parlay-version VERSION]\n' "${0##*/}" >&2
+  printf 'Usage: %s [--spdx PATH:ARTIFACT] [--cyclonedx PATH:ARTIFACT] [--salt-version VERSION] [--ubuntu-deps PATH] [--syft-version VERSION] [--parlay-version VERSION] [--verify-deterministic] [--component-count-min N] [--spdx-package-count-min N] [--cyclonedx-component-count-min N]\n' "${0##*/}" >&2
   exit 2
 }
 
@@ -31,6 +39,9 @@ salt_version='0.0.0'
 ubuntu_deps_path=''
 syft_version=''
 parlay_version=''
+verify_deterministic=false
+spdx_package_count_min="$DEFAULT_SPDX_PACKAGE_COUNT_MIN"
+cyclonedx_component_count_min="$DEFAULT_CYCLONEDX_COMPONENT_COUNT_MIN"
 declare -a spdx_specs=()
 declare -a cdx_specs=()
 
@@ -64,6 +75,26 @@ while (($# > 0)); do
     --parlay-version)
       sbom_require_option_value "$#" "$1"
       parlay_version="$2"
+      shift 2
+      ;;
+    --verify-deterministic)
+      verify_deterministic=true
+      shift 1
+      ;;
+    --component-count-min)
+      sbom_require_option_value "$#" "$1"
+      spdx_package_count_min="$2"
+      cyclonedx_component_count_min="$2"
+      shift 2
+      ;;
+    --spdx-package-count-min)
+      sbom_require_option_value "$#" "$1"
+      spdx_package_count_min="$2"
+      shift 2
+      ;;
+    --cyclonedx-component-count-min)
+      sbom_require_option_value "$#" "$1"
+      cyclonedx_component_count_min="$2"
       shift 2
       ;;
     --help|-h)
@@ -128,6 +159,56 @@ cdx_hash_value() {
   sbom_cdx_hash_value "$@"
 }
 
+# Verify SPDX SBOM uses deterministic documentNamespace and timestamps
+verify_spdx_deterministic() {
+  local path="$1"
+  [[ -f "$path" ]] || die "$path: No such file"
+  # Check documentNamespace doesn't contain timestamps or UUIDs
+  namespace=$(jq -r '.documentNamespace // ""' "$path")
+  [[ -n "$namespace" ]] || die "$path: documentNamespace is empty"
+  # Warn if namespace contains timestamp patterns (YYYY-MM-DD, ISO8601, etc)
+  if [[ "$namespace" =~ [0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+    printf 'WARNING: SPDX documentNamespace contains date pattern: %s\n' "$namespace" >&2
+  fi
+  # Check creationInfo.created is not in the future or current timestamp
+  created=$(jq -r '.creationInfo.created // ""' "$path")
+  [[ -n "$created" ]] || die "$path: creationInfo.created is missing"
+  printf 'INFO: SPDX creationInfo.created: %s\n' "$created" >&2
+}
+
+# Verify CycloneDX SBOM uses deterministic component metadata
+verify_cyclonedx_deterministic() {
+  local path="$1"
+  [[ -f "$path" ]] || die "$path: No such file"
+  # Check metadata.component is present and reproducible
+  jq -e '.metadata.component' "$path" >/dev/null || die "$path: missing metadata.component"
+  # Verify no dynamic fields like timestamps in component data
+  modified=$(jq -r '.metadata.component.modified // ""' "$path")
+  if [[ -n "$modified" ]]; then
+    printf 'INFO: CycloneDX component modified: %s\n' "$modified" >&2
+  fi
+}
+
+# Validate minimum package/component count in SBOM
+validate_count_threshold() {
+  local path="$1" format="$2" min_count="$3" count_label="$4"
+  [[ -f "$path" ]] || die "$path: No such file"
+
+  local actual_count
+  if [[ "$format" == "spdx" ]]; then
+    actual_count=$(jq '.packages | length' "$path")
+  elif [[ "$format" == "cyclonedx" ]]; then
+    actual_count=$(jq '.components | length' "$path")
+  else
+    die "Unknown format: $format (expected: spdx or cyclonedx)"
+  fi
+
+  if [[ $actual_count -lt $min_count ]]; then
+    die "$path: $count_label count $actual_count is below minimum $min_count"
+  fi
+  printf 'INFO: %s has %d %s (minimum: %d)\n' "$path" "$actual_count" "$count_label" "$min_count" >&2
+}
+
 validate_spdx() {
   local path="$1" artifact="$2" version="$3"
   local package_file_name link_relationship
@@ -147,18 +228,18 @@ validate_spdx() {
   [[ -n "$salt_spdx_id" ]] || die "$path missing salt package"
 
   jq -e --arg sid "$salt_spdx_id" 'if has("documentDescribes") then .documentDescribes == [$sid] else true end' "$path" >/dev/null || die "$path has unexpected documentDescribes entries"
-  jq -e '.packages | first(.[] | select(.name=="salt")) | .supplier == "Organization: CTFfactory"' "$path" >/dev/null || die "$path missing salt supplier metadata"
-  jq -e '.packages | first(.[] | select(.name=="salt")) | .originator == "Organization: CTFfactory"' "$path" >/dev/null || die "$path missing salt originator metadata"
-  jq -e --arg v "$version" '.packages | first(.[] | select(.name=="salt")) | .versionInfo == $v' "$path" >/dev/null || die "$path missing salt version metadata"
-  jq -e --arg p "$PROJECT_URL" '.packages | first(.[] | select(.name=="salt")) | .downloadLocation as $d | ($d == $p or ($d|type=="string" and startswith("git+" + $p + ".git@")))' "$path" >/dev/null || die "$path missing salt project URL"
-  jq -e '.packages | first(.[] | select(.name=="salt")) | .filesAnalyzed == true' "$path" >/dev/null || die "$path salt package must have filesAnalyzed true"
-  jq -e --arg f "$package_file_name" '.packages | first(.[] | select(.name=="salt")) | .packageFileName == $f' "$path" >/dev/null || die "$path missing salt package filename"
-  jq -e --arg p "$PROJECT_URL" '.packages | first(.[] | select(.name=="salt")) | .homepage == $p' "$path" >/dev/null || die "$path missing salt homepage"
-  jq -e '.packages | first(.[] | select(.name=="salt")) | .primaryPackagePurpose == "APPLICATION"' "$path" >/dev/null || die "$path missing salt APPLICATION package purpose"
-  jq -e --arg s "$SALT_SUMMARY" '.packages | first(.[] | select(.name=="salt")) | (.summary == $s and (.description|type=="string"))' "$path" >/dev/null || die "$path missing salt summary/description"
-  jq -e --arg l "$SALT_LICENSE" '.packages | first(.[] | select(.name=="salt")) | (.licenseDeclared == $l and .licenseConcluded == $l)' "$path" >/dev/null || die "$path missing salt license metadata"
-  jq -e --arg l "$SALT_LICENSE" '.packages | first(.[] | select(.name=="salt")) | .licenseInfoFromFiles == [$l]' "$path" >/dev/null || die "$path missing salt licenseInfoFromFiles metadata"
-  jq -e --arg c "$SALT_COPYRIGHT" '.packages | first(.[] | select(.name=="salt")) | .copyrightText == $c' "$path" >/dev/null || die "$path missing salt copyright metadata"
+  jq -e "$SALT_PKG_FILTER | .supplier == \"Organization: CTFfactory\"" "$path" >/dev/null || die "$path missing salt supplier metadata"
+  jq -e "$SALT_PKG_FILTER | .originator == \"Organization: CTFfactory\"" "$path" >/dev/null || die "$path missing salt originator metadata"
+  jq -e --arg v "$version" "$SALT_PKG_FILTER | .versionInfo == \$v" "$path" >/dev/null || die "$path missing salt version metadata"
+  jq -e --arg p "$PROJECT_URL" "$SALT_PKG_FILTER | .downloadLocation as \$d | (\$d == \$p or (\$d|type==\"string\" and startswith(\"git+\" + \$p + \".git@\")))" "$path" >/dev/null || die "$path missing salt project URL"
+  jq -e "$SALT_PKG_FILTER | .filesAnalyzed == true" "$path" >/dev/null || die "$path salt package must have filesAnalyzed true"
+  jq -e --arg f "$package_file_name" "$SALT_PKG_FILTER | .packageFileName == \$f" "$path" >/dev/null || die "$path missing salt package filename"
+  jq -e --arg p "$PROJECT_URL" "$SALT_PKG_FILTER | .homepage == \$p" "$path" >/dev/null || die "$path missing salt homepage"
+  jq -e "$SALT_PKG_FILTER | .primaryPackagePurpose == \"APPLICATION\"" "$path" >/dev/null || die "$path missing salt APPLICATION package purpose"
+  jq -e --arg s "$SALT_SUMMARY" "$SALT_PKG_FILTER | (.summary == \$s and (.description|type==\"string\"))" "$path" >/dev/null || die "$path missing salt summary/description"
+  jq -e --arg l "$SALT_LICENSE" "$SALT_PKG_FILTER | (.licenseDeclared == \$l and .licenseConcluded == \$l)" "$path" >/dev/null || die "$path missing salt license metadata"
+  jq -e --arg l "$SALT_LICENSE" "$SALT_PKG_FILTER | .licenseInfoFromFiles == [\$l]" "$path" >/dev/null || die "$path missing salt licenseInfoFromFiles metadata"
+  jq -e --arg c "$SALT_COPYRIGHT" "$SALT_PKG_FILTER | .copyrightText == \$c" "$path" >/dev/null || die "$path missing salt copyright metadata"
   jq -e --arg p "$SALT_PURL" '.packages | first(.[] | select(.name=="salt")) | .externalRefs | type=="array" and any(.[]; type=="object" and .referenceType=="purl" and .referenceLocator==$p)' "$path" >/dev/null || die "$path missing salt purl external reference"
 
   libsodium_spdx_id=$(jq -r 'first((.packages // [])[] | select(.name=="libsodium") | .SPDXID) // ""' "$path")
@@ -178,7 +259,22 @@ validate_spdx() {
   if jq -e '.files | any(.[]; type=="object" and .fileName == "")' "$path" >/dev/null; then
     die "$path contains empty SPDX fileName placeholder"
   fi
-  placeholder_file=$(jq -r 'first((.files // [])[] | select(type=="object") | . as $f | select((($f.checksums // []) | any((.algorithm=="SHA1" and .checksumValue == ("0"*40)) or (.algorithm=="SHA256" and .checksumValue == ("0"*64))))) | ($f.fileName // "")) // ""' "$path")
+  # shellcheck disable=SC2016 # jq expression intentionally contains jq variable references ($sha1_len/$sha256_len).
+  local -r PLACEHOLDER_FILE_JQ_FILTER='
+    first(
+      (.files // [])[]
+      | select(type=="object")
+      | select(
+          ((.checksums // []) | any(
+            (.algorithm=="SHA1" and .checksumValue == ("0"*$sha1_len))
+            or
+            (.algorithm=="SHA256" and .checksumValue == ("0"*$sha256_len))
+          ))
+        )
+      | (.fileName // "")
+    ) // ""
+  '
+  placeholder_file=$(jq -r --argjson sha1_len "$SHA1_HEX_LEN" --argjson sha256_len "$SHA256_HEX_LEN" "$PLACEHOLDER_FILE_JQ_FILTER" "$path")
   if [[ -n "$placeholder_file" ]]; then
     die "$path:$placeholder_file contains placeholder zero checksum"
   fi
@@ -210,7 +306,7 @@ validate_spdx() {
     shipped_ids+=("$file_spdx_id")
   done
 
-  expected_hasfiles=$(printf '%s\n' "${shipped_ids[@]}" | jq -R . | jq -s .)
+  expected_hasfiles=$(printf '%s\n' "${shipped_ids[@]}" | jq -Rs 'split("\n")[:-1]')
   jq -e --argjson hf "$expected_hasfiles" '.packages | first(.[] | select(.name=="salt")) | (if has("hasFiles") then .hasFiles == $hf else true end)' "$path" >/dev/null || die "$path has unexpected salt hasFiles metadata"
   expected_verification=$(spdx_package_verification_code "$path" "$artifact" 'salt.1')
   jq -e --arg v "$expected_verification" '.packages | first(.[] | select(.name=="salt")) | .packageVerificationCode | type=="object" and .packageVerificationCodeValue == $v' "$path" >/dev/null || die "$path missing valid salt package verification code"
@@ -241,6 +337,12 @@ validate_cyclonedx() {
   jq -e --arg s "$salt_ref" --arg l "$libsodium_ref" '.dependencies | type=="array" and any(.[]; type=="object" and .ref==$s and (.dependsOn|type=="array") and ((.dependsOn|index($l)) != null))' "$path" >/dev/null || die "$path missing salt dependsOn libsodium dependency"
 
   if [[ -n "$ubuntu_deps_path" ]]; then
+    declare -A ubuntu_pkg_versions=()
+    while IFS=$'\t' read -r pkg_name pkg_version; do
+      [[ -n "$pkg_name" ]] || continue
+      ubuntu_pkg_versions["$pkg_name"]="$pkg_version"
+    done < <(jq -r '.packages[] | [.name, (.version // "NOASSERTION")] | @tsv' "$ubuntu_deps_path")
+
     while IFS=$'\t' read -r pkg_name pkg_version; do
       [[ -n "$pkg_name" ]] || continue
       pkg_ref=$(ubuntu_cdx_ref "$pkg_name" "$pkg_version")
@@ -249,8 +351,8 @@ validate_cyclonedx() {
 
     while IFS=$'\t' read -r dep_from dep_to; do
       [[ -n "$dep_from" && -n "$dep_to" ]] || continue
-      from_ver=$(jq -r --arg n "$dep_from" 'first(.packages[] | select(.name==$n) | .version) // "NOASSERTION"' "$ubuntu_deps_path")
-      to_ver=$(jq -r --arg n "$dep_to" 'first(.packages[] | select(.name==$n) | .version) // "NOASSERTION"' "$ubuntu_deps_path")
+      from_ver="${ubuntu_pkg_versions[$dep_from]:-NOASSERTION}"
+      to_ver="${ubuntu_pkg_versions[$dep_to]:-NOASSERTION}"
       from_ref=$(ubuntu_cdx_ref "$dep_from" "$from_ver")
       to_ref=$(ubuntu_cdx_ref "$dep_to" "$to_ver")
       jq -e --arg a "$from_ref" --arg b "$to_ref" '.dependencies | type=="array" and any(.[]; .ref==$a and (.dependsOn|type=="array") and ((.dependsOn|index($b)) != null))' "$path" >/dev/null || die "$path missing Ubuntu dependency edge $dep_from -> $dep_to"
@@ -258,13 +360,13 @@ validate_cyclonedx() {
 
     while IFS=$'\t' read -r root_name root_role; do
       [[ -n "$root_name" ]] || continue
-      root_ver=$(jq -r --arg n "$root_name" 'first(.packages[] | select(.name==$n) | .version) // "NOASSERTION"' "$ubuntu_deps_path")
+      root_ver="${ubuntu_pkg_versions[$root_name]:-NOASSERTION}"
       root_ref=$(ubuntu_cdx_ref "$root_name" "$root_ver")
-      if [[ "$root_role" == 'salt-build-tool' ]]; then
+      if [[ "$root_role" == "$ROOT_ROLE_SALT_BUILD_TOOL" ]]; then
         jq -e --arg n "$root_name" '.components | first(.[] | select(.name==$n)) | .scope == "excluded"' "$path" >/dev/null || die "$path build-tool component $root_name must use excluded scope"
         jq -e --arg s "$salt_ref" --arg r "$root_ref" '.dependencies | type=="array" and any(.[]; .ref==$s and (.dependsOn|type=="array") and ((.dependsOn|index($r)) != null))' "$path" >/dev/null || die "$path missing salt build-tool dependency $root_name"
       fi
-      if [[ "$root_role" == 'libsodium-runtime' || "$root_role" == 'libsodium-build' ]]; then
+      if [[ "$root_role" == "$ROOT_ROLE_LIBSODIUM_RUNTIME" || "$root_role" == "$ROOT_ROLE_LIBSODIUM_BUILD" ]]; then
         jq -e --arg l "$libsodium_ref" --arg r "$root_ref" '.dependencies | type=="array" and any(.[]; .ref==$l and (.dependsOn|type=="array") and ((.dependsOn|index($r)) != null))' "$path" >/dev/null || die "$path missing libsodium dependency root $root_name"
       fi
     done < <(jq -r '.roots[] | [.name, .role] | @tsv' "$ubuntu_deps_path")
@@ -291,10 +393,18 @@ validate_cyclonedx() {
 for spec in "${spdx_specs[@]}"; do
   sbom_parse_path_artifact "$spec" path artifact
   validate_spdx "$path" "$artifact" "$salt_version"
+  validate_count_threshold "$path" "spdx" "$spdx_package_count_min" "packages"
+  if [[ "$verify_deterministic" == "true" ]]; then
+    verify_spdx_deterministic "$path"
+  fi
 done
 for spec in "${cdx_specs[@]}"; do
   sbom_parse_path_artifact "$spec" path artifact
   validate_cyclonedx "$path" "$artifact" "$salt_version"
+  validate_count_threshold "$path" "cyclonedx" "$cyclonedx_component_count_min" "components"
+  if [[ "$verify_deterministic" == "true" ]]; then
+    verify_cyclonedx_deterministic "$path"
+  fi
 done
 for spec in "${spdx_specs[@]}" "${cdx_specs[@]}"; do
   sbom_parse_path_artifact "$spec" path _artifact

@@ -6,7 +6,7 @@ argument-hint: '[path to SBOM or blank for build/sbom outputs]'
 
 # Audit SBOM Skill
 
-Use this skill to review generated SBOMs and confirm the release workflow and local `make sbom` target produce complete, artifact-scoped SPDX JSON and CycloneDX JSON.
+Use this skill to review generated SBOMs and confirm the release workflow and local `make sbom` target produce complete, artifact-scoped SPDX JSON and CycloneDX JSON, and that outputs remain usable for vulnerability monitoring.
 
 ## Workflow
 
@@ -34,9 +34,10 @@ Use this skill to review generated SBOMs and confirm the release workflow and lo
     - `versionInfo` equals the release version being validated (often `0.0.0` locally)
    - `downloadLocation: https://github.com/CTFfactory/salt`
    - `licenseDeclared: Unlicense`
-   - `licenseConcluded: Unlicense`
-   - `copyrightText: Copyright 2026 CTFfactory`
-   - external purl reference: `pkg:github/CTFfactory/salt`
+    - `licenseConcluded: Unlicense`
+    - `copyrightText: Copyright 2026 CTFfactory`
+    - external purl reference: `pkg:github/CTFfactory/salt`
+    - minimum metadata quality is present: component name, version, supplier, hash, and license fields are non-empty where policy requires.
 
 5. **Validate shipped file metadata.**
    - Dynamic SBOM has a `files[]` entry for `salt`.
@@ -54,9 +55,14 @@ Use this skill to review generated SBOMs and confirm the release workflow and lo
    - CycloneDX dependencies link the `salt` metadata component to `libsodium`.
 
 7. **Validate release parity.**
-   - `.github/workflows/release.yml` invokes Syft with the same source metadata as `make sbom`.
-    - Release workflow invokes `scripts/add-libsodium-to-sbom.sh` with artifact-file metadata.
-   - Release workflow includes all four SBOMs in `SHA256SUMS` and release assets.
+    - `.github/workflows/release.yml` invokes Syft with the same source metadata as `make sbom`.
+    - Release workflow invokes `scripts/add-libsodium-to-sbom.sh` and `scripts/add-ubuntu-provenance-to-sbom.sh`.
+    - Release workflow includes all four SBOMs in `SHA256SUMS` and release assets.
+    - Release workflow runs `scripts/validate-sbom.sh`.
+
+8. **Validate vulnerability-monitoring readiness.**
+    - Confirm SBOM outputs are consumable by the project vulnerability-monitoring workflow (for example `make sbom-vuln`, Snyk, or Trivy usage documented for release triage).
+    - If capability is missing or drifting, report it as an operational gap even when schema/policy checks pass.
 
 ## Audit Snippet
 
@@ -115,3 +121,4 @@ Summarize findings in this order:
 3. **File metadata** — shipped-file checksums/hashes, license, copyright, file type.
 4. **Dependency metadata** — libsodium package and relationship.
 5. **Release parity** — Makefile, workflow, checksums, release assets.
+6. **Vulnerability-monitoring readiness** — SBOM outputs remain actionable for CVE triage tooling.

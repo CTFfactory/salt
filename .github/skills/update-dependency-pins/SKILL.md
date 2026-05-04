@@ -63,7 +63,6 @@ Use this skill to perform a periodic audit and update of all pinned external dep
 ### Docker Base Images
 | Image | Location |
 |---|---|
-| `ubuntu:20.04` | `docker/ubuntu/20/Dockerfile` |
 | `ubuntu:22.04` | `docker/ubuntu/22/Dockerfile` |
 | `ubuntu:24.04` | `docker/ubuntu/24/Dockerfile` |
 | `ubuntu:26.04` | `docker/ubuntu/26/Dockerfile` |

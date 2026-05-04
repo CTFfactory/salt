@@ -19,14 +19,14 @@ Every user interaction must preserve `salt`'s core contract: ciphertext or JSON 
 - **Protect the CLI contract.** Keep stdout reserved for primary results and stderr reserved for parseable diagnostics. Do not add progress text, color, prompts, or banners to successful stdout paths.
 - **Prefer boring Unix behavior.** Keep short and long flags stable, use explicit exit statuses, make stdin behavior unsurprising, and avoid interactive flows in automation-oriented commands.
 - **Ask when UX changes alter workflows.** Clarify before changing defaults, output schemas, error wording, exit codes, input limits, or whether plaintext may appear in argv.
-- **Research before recommending changes.** Inspect `src/main.c`, `src/cli_parse.c`, `README.md`, `man/salt.1`, `scripts/qa.sh`, and relevant tests before proposing CLI changes.
+- **Research before recommending changes.** Inspect `src/main.c`, `src/cli/parse.c`, `README.md`, `man/salt.1`, `scripts/qa.sh`, and relevant tests before proposing CLI changes.
 - **Validate against tests and docs.** Ensure user-facing changes are reflected in black-box QA, cmocka CLI tests, README examples, and the man page.
 
 ## Domain Context
 
 - **Project:** `salt` - Sodium Asymmetric/Anonymous Locking Tool.
-- **Language and parser:** C11 with `getopt_long()` option parsing in `src/main.c`.
-- **Parsing helpers:** `src/cli_parse.c` owns strict base64/JSON key parsing and output serialization.
+- **Language and parser:** C17 with `getopt_long()` option parsing in `src/main.c`.
+- **Parsing helpers:** `src/cli/parse.c` owns strict base64/JSON key parsing and output serialization.
 - **Public behavior docs:** `README.md`, `man/salt.1`, and `TESTING.md`.
 - **Black-box UX gate:** `scripts/qa.sh`, invoked by `make test-qa`.
 - **Supported outputs:** `text` base64 ciphertext and REST-ready `json` with `encrypted_value` and `key_id`.

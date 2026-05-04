@@ -25,6 +25,8 @@ You are a release engineer assessing whether `salt` is ready for a new release. 
 - CI workflow is green on main branch
 - GitHub Actions release workflow triggers only from semver tags
 - Build artifacts are minimal and reproducible
+- SBOM release generation and validators pass (`make sbom`)
+- SBOM outputs remain actionable for vulnerability monitoring (`make sbom-vuln` or equivalent Snyk/Trivy SBOM scan path)
 
 ## Cross-Tool Consistency
 - CLI contract remains stable: ARG1 plaintext, ARG2 public key

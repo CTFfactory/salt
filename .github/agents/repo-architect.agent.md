@@ -27,7 +27,7 @@ You are a repository architect for this C/libsodium/cmocka codebase.
 ## Domain Context
 
 - Project: `salt`
-- Language: C11
+- Language: C17
 - Core libraries: libsodium, cmocka
 - Build system: GNU Make
 - CI/CD: GitHub Actions
@@ -46,7 +46,7 @@ You are a repository architect for this C/libsodium/cmocka codebase.
 include/salt.h              -> Public API for sealing and encoding flow
 src/main.c                  -> CLI argument parsing and process exit codes
 src/salt.c                  -> Core seal + base64 orchestration
-src/cli_parse.c             -> Input validation and CLI parsing helpers
+src/cli/parse.c             -> Input validation and CLI parsing helpers
 tests/test_salt.c           -> cmocka unit tests
 man/salt.1                  -> Manual page source (roff)
 ```

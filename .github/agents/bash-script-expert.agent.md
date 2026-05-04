@@ -24,7 +24,7 @@ Write and maintain production-grade Bash that is safe for secrets-handling workf
 
 ## Domain Context
 
-- **Project:** `salt` - a C11/libsodium sealed-box encryption CLI for GitHub secret workflows.
+- **Project:** `salt` - a C17/libsodium sealed-box encryption CLI for GitHub secret workflows.
 - **Script locations:**
   - `scripts/qa.sh` - black-box CLI contract and crypto roundtrip QA.
   - `scripts/fuzz.sh` - long-running libFuzzer orchestrator for parse, CLI, output, boundary, and roundtrip harnesses.

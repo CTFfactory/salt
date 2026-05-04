@@ -109,6 +109,16 @@ assert_stdout_contains() {
     return 0
 }
 
+# assert_stdout_contains_fixed <id> <desc> <stdout_file> <pattern>
+assert_stdout_contains_fixed() {
+    local id="$1" desc="$2" file="$3" pattern="$4"
+    if ! grep -q -F -e "$pattern" "$file"; then
+        fail "$id" "$desc" "stdout did not contain: $pattern"
+        return 1
+    fi
+    return 0
+}
+
 # assert_stderr_contains <id> <desc> <stderr_file> <pattern>
 assert_stderr_contains() {
     local id="$1" desc="$2" file="$3" pattern="$4"
@@ -280,11 +290,38 @@ run_test_qa13() {
 run_test_qa14() {
     local id="qa-14" desc="Exactly 48 KB plaintext (GitHub limit) is accepted"
     local payload_file="${TMP_DIR}/payload48k"
-    dd if=/dev/zero bs=1 count=49152 2>/dev/null | tr '\0' 'A' > "$payload_file"
+    head -c 49152 /dev/zero | tr '\0' 'A' > "$payload_file"
     local rc
     rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" - < "$payload_file")"
     assert_exit_code       "$id" "$desc" 0 "$rc" || return
     assert_stdout_nonempty "$id" "$desc" "$OUT"   || return
+    pass "$id" "$desc"
+}
+
+run_test_qa15() {
+    local id="qa-15" desc="Interleaved options and positional arguments succeed"
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" 'hello' --key "$PUB_KEY")"
+    assert_exit_code       "$id" "$desc" 0 "$rc" || return
+    assert_stdout_nonempty "$id" "$desc" "$OUT"   || return
+    pass "$id" "$desc"
+}
+
+run_test_qa16() {
+    local id="qa-16" desc="The '--' POSIX separator allows encrypting literal '--help'"
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" -- --help)"
+    assert_exit_code       "$id" "$desc" 0 "$rc" || return
+    assert_stdout_nonempty "$id" "$desc" "$OUT"   || return
+
+    local ciphertext
+    ciphertext="$(cat "$OUT")"
+    local decrypted
+    decrypted="$(decrypt_ciphertext "$PUB_KEY" "$SEC_KEY" "$ciphertext")"
+    if [[ "$decrypted" != "--help" ]]; then
+        fail "$id" "$desc" "did not cleanly encrypt literal --help string"
+        return
+    fi
     pass "$id" "$desc"
 }
 
@@ -313,11 +350,22 @@ run_test_qa21() {
 run_test_qa22() {
     local id="qa-22" desc="Binary data (all 256 byte values) from stdin is accepted"
     local binary_file="${TMP_DIR}/binary256"
+    # Intentionally generate all byte values 0x00..0xFF (including NUL) to verify full binary stdin handling.
     awk 'BEGIN { for (i = 0; i < 256; ++i) printf "%c", i }' > "$binary_file"
     local rc
     rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" - < "$binary_file")"
     assert_exit_code       "$id" "$desc" 0 "$rc" || return
     assert_stdout_nonempty "$id" "$desc" "$OUT"   || return
+    pass "$id" "$desc"
+}
+
+run_test_qa23() {
+    local id="qa-23" desc="Empty stdin plaintext exits 1 with error on stderr (CWE-391)"
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" - < /dev/null)"
+    assert_exit_code       "$id" "$desc" 1 "$rc"    || return
+    assert_stdout_empty    "$id" "$desc" "$OUT"      || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'empty' || return
     pass "$id" "$desc"
 }
 
@@ -340,6 +388,27 @@ run_test_qa31() {
     rc="$(printf '%s' "$PUB_KEY" | run_salt_rc "$OUT" "$ERR" -k - 'hello')"
     assert_exit_code       "$id" "$desc" 0 "$rc" || return
     assert_stdout_nonempty "$id" "$desc" "$OUT"   || return
+    pass "$id" "$desc"
+}
+
+run_test_qa32() {
+    local id="qa-32" desc="Empty key via stdin exits 1 with error on stderr (CWE-391)"
+    local rc
+    rc="$(printf '' | run_salt_rc "$OUT" "$ERR" --key - 'hello')"
+    assert_exit_code       "$id" "$desc" 1 "$rc"    || return
+    assert_stdout_empty    "$id" "$desc" "$OUT"      || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'empty' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa33() {
+    local id="qa-33" desc="Excessive stream appended to key ingest limits safely rejecting memory exhaustion (CWE-400)"
+    local oversized="${TMP_DIR}/oversized.key"
+    dd if=/dev/zero bs=102400 count=1 2>/dev/null > "$oversized"
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key - 'hello' < "$oversized")"
+    assert_exit_code       "$id" "$desc" 1 "$rc" || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'length' || return
     pass "$id" "$desc"
 }
 
@@ -430,6 +499,19 @@ run_test_qa56() {
     pass "$id" "$desc"
 }
 
+run_test_qa57() {
+    local id="qa-57" desc="Conflicting options resolve predictably to the right-most parameter (-o json -o text)"
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$JSON_KEY_WITH_ID" -o json -o text 'hello')"
+    assert_exit_code       "$id" "$desc" 0 "$rc" || return
+    # Needs to be text format, not json
+    if grep -q '^{' "$OUT"; then
+        fail "$id" "$desc" "stdout looks like JSON, expected raw base64 from text override"
+        return
+    fi
+    pass "$id" "$desc"
+}
+
 # ---------------------------------------------------------------------------
 # Group 7: --key-id / -i
 # ---------------------------------------------------------------------------
@@ -467,6 +549,37 @@ run_test_qa63() {
     rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" --key-id 'ignored' --output text 'hello')"
     assert_exit_code       "$id" "$desc" 0 "$rc" || return
     assert_stdout_nonempty "$id" "$desc" "$OUT"   || return
+    pass "$id" "$desc"
+}
+
+run_test_qa64() {
+    local id="qa-64" desc="--key-id containing quotes and backslashes is properly escaped in JSON (CWE-116)"
+    local tricky_id='bad"id\test'
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" --key-id "$tricky_id" --output json 'hello')"
+    assert_exit_code       "$id" "$desc" 0 "$rc" || return
+    assert_stdout_contains "$id" "$desc" "$OUT" 'bad\\"id\\\\test' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa65() {
+    local id="qa-65" desc="--key-id exceeding 256 bytes exits 1 (CWE-119)"
+    local long_id
+    long_id="$(head -c 1000 /dev/zero | tr '\0' 'A')"
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" --key-id "$long_id" --output json 'hello')"
+    assert_exit_code       "$id" "$desc" 1 "$rc" || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'length' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa66() {
+    local id="qa-66" desc="--key-id containing control bytes exits cleanly with valid JSON escaping (CWE-116)"
+    local tricky_id=$'bad\n\tid\r\x07'
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" --key-id "$tricky_id" --output json 'hello')"
+    assert_exit_code       "$id" "$desc" 0 "$rc" || return
+    assert_stdout_contains "$id" "$desc" "$OUT" 'bad\\n\\tid\\r\\u0007' || return
     pass "$id" "$desc"
 }
 
@@ -589,7 +702,7 @@ run_test_qa83() {
 }
 
 run_test_qa84() {
-    local id="qa-84" desc='JSON key missing "key" field is rejected (exit 1)'
+    local id="qa-84" desc='JSON key missing "key" field is rejected (CWE-20)'
     local rc
     rc="$(run_salt_rc "$OUT" "$ERR" --key '{"key_id":"only-id"}' 'hello')"
     assert_exit_code    "$id" "$desc" 1 "$rc" || return
@@ -597,8 +710,35 @@ run_test_qa84() {
     pass "$id" "$desc"
 }
 
+run_test_qa84a() {
+    local id="qa-84a" desc='JSON key with duplicate "key" field is rejected (CWE-20)'
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "{\"key\":\"${PUB_KEY}\",\"key\":\"${PUB_KEY}\"}" 'hello')"
+    assert_exit_code       "$id" "$desc" 1 "$rc" || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'duplicate field' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa84b() {
+    local id="qa-84b" desc='JSON key with duplicate "key_id" field is rejected (CWE-20)'
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "{\"key\":\"${PUB_KEY}\",\"key_id\":\"a\",\"key_id\":\"b\"}" 'hello')"
+    assert_exit_code       "$id" "$desc" 1 "$rc" || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'duplicate field' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa84c() {
+    local id="qa-84c" desc='JSON key with empty "key" string is rejected (CWE-20)'
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key '{"key":""}' 'hello')"
+    assert_exit_code       "$id" "$desc" 1 "$rc" || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'must not be empty' || return
+    pass "$id" "$desc"
+}
+
 run_test_qa85() {
-    local id="qa-85" desc='Empty JSON object {} is rejected (exit 1)'
+    local id="qa-85" desc='Empty JSON object {} is rejected (CWE-20)'
     local rc
     rc="$(run_salt_rc "$OUT" "$ERR" --key '{}' 'hello')"
     assert_exit_code    "$id" "$desc" 1 "$rc" || return
@@ -612,6 +752,93 @@ run_test_qa86() {
     rc="$(run_salt_rc "$OUT" "$ERR" --key '{key: value}' 'hello')"
     assert_exit_code    "$id" "$desc" 1 "$rc" || return
     assert_stdout_empty "$id" "$desc" "$OUT"  || return
+    pass "$id" "$desc"
+}
+
+run_test_qa87() {
+    local id="qa-87" desc="Whitespace-heavy JSON key correctly parses (CWE-20)"
+    local ws_key
+    ws_key="$(printf '{\n\t   \n  "key": \n\t   "%s"\n\n\n}' "$PUB_KEY")"
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$ws_key" 'hello')"
+    assert_exit_code       "$id" "$desc" 0 "$rc" || return
+    assert_stdout_nonempty "$id" "$desc" "$OUT"   || return
+    pass "$id" "$desc"
+}
+
+run_test_qa88() {
+    local id="qa-88" desc="Truncated unclosed JSON mapping safely rejects (CWE-20)"
+    local bad_key="{\"key_id\":\"short\",\"key\":\"${PUB_KEY}\""
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$bad_key" 'hello')"
+    assert_exit_code       "$id" "$desc" 1 "$rc" || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'invalid' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa88a() {
+    local id="qa-88a" desc="JSON key object with trailing garbage is rejected (CWE-20)"
+    local trailing_key="{\"key\":\"${PUB_KEY}\"}garbage_trailing_data"
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$trailing_key" 'hello')"
+    assert_exit_code       "$id" "$desc" 1 "$rc" || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'invalid' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa88b() {
+    local id="qa-88b" desc="JSON key containing embedded null bytes evaluates safely without misinterpretation (CWE-115)"
+    local rc
+    rc="$(printf '{"key_id":"test\0null", "key":"%s"}' "$PUB_KEY" | run_salt_rc "$OUT" "$ERR" --key - -o json 'hello')"
+    assert_exit_code       "$id" "$desc" 1 "$rc" || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'string' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa88c() {
+    local id="qa-88c" desc="Deeply nested JSON objects safely rejected without recursion exhaustion (CWE-674)"
+    local rc
+    rc="$(python3 -c "print('{\"key\": ' * 100 + '\"test\"' + '}' * 100)" | run_salt_rc "$OUT" "$ERR" --key - 'hello')"
+    assert_exit_code       "$id" "$desc" 1 "$rc" || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'string' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa88d() {
+    local id="qa-88d" desc="Unterminated JSON string safely bounces without out-of-bounds read (CWE-125/CWE-787)"
+    local rc
+    rc="$(printf '{"key": "abc' | run_salt_rc "$OUT" "$ERR" --key - 'hello')"
+    assert_exit_code       "$id" "$desc" 1 "$rc" || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'string' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa89() {
+    local id="qa-89" desc="UTF-8 and Emojis map directly into JSON emission unmodified"
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" -i '🚀-id' -o json 'hello')"
+    assert_exit_code       "$id" "$desc" 0 "$rc" || return
+    assert_stdout_contains "$id" "$desc" "$OUT" '🚀-id' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa89a() {
+    local id="qa-89a" desc="JSON key string containing unescaped control character is rejected (RFC 8259)"
+    local bad_key="{\"key\":\"${PUB_KEY}\",\"key_id\":\"bad"$'\n'"\"}"
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$bad_key" 'hello')"
+    assert_exit_code       "$id" "$desc" 1 "$rc" || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'string' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa89b() {
+    local id="qa-89b" desc="JSON key string containing valid escape sequences parses and emits correctly (CWE-116)"
+    local escaped_key="{\"key\":\"${PUB_KEY}\",\"key_id\":\"escaped\\\\n\\\\t\\\\r\\\\\\\\\\\"/\"}"
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$escaped_key" -o json 'hello')"
+    assert_exit_code       "$id" "$desc" 0 "$rc" || return
+    assert_stdout_contains_fixed "$id" "$desc" "$OUT" 'escaped\\n\\t\\r\\\\\"/' || return
     pass "$id" "$desc"
 }
 
@@ -648,6 +875,17 @@ run_test_qa92() {
     pass "$id" "$desc"
 }
 
+run_test_qa92a() {
+    local id="qa-92a" desc="Base64 key decoding to >32 bytes exits 1"
+    # 33 zero bytes encoded to base64
+    local over_key="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$over_key" 'hello')"
+    assert_exit_code    "$id" "$desc" 1 "$rc" || return
+    assert_stdout_empty "$id" "$desc" "$OUT"  || return
+    pass "$id" "$desc"
+}
+
 run_test_qa93() {
     local id="qa-93" desc="Empty positional plaintext exits 1"
     local rc
@@ -658,10 +896,10 @@ run_test_qa93() {
 }
 
 run_test_qa94() {
-    local id="qa-94" desc="Plaintext > 48 KB exits 1 with size error on stderr"
+    local id="qa-94" desc="Plaintext > 48 KB exits 1 with size error on stderr (CWE-119)"
     local oversized="${TMP_DIR}/oversized"
     # 49153 bytes = 48 KB + 1 byte over GitHub limit
-    dd if=/dev/zero bs=1 count=49153 2>/dev/null | tr '\0' 'B' > "$oversized"
+    head -c 49153 /dev/zero | tr '\0' 'B' > "$oversized"
     local rc
     rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" - < "$oversized")"
     assert_exit_code    "$id" "$desc" 1 "$rc" || return
@@ -715,7 +953,7 @@ run_test_qa99() {
 }
 
 run_test_qa99a() {
-    local id="qa-99a" desc="SIGTERM during stdin ingestion exits 5"
+    local id="qa-99a" desc="SIGTERM during stdin ingestion exits 5 (CWE-755)"
     local rc=0
 
     "$SALT_BIN" --key "$PUB_KEY" - >"$OUT" 2>"$ERR" < <(sleep 5) &
@@ -727,6 +965,25 @@ run_test_qa99a() {
     assert_exit_code       "$id" "$desc" 5 "$rc" || return
     assert_stdout_empty    "$id" "$desc" "$OUT" || return
     assert_stderr_contains "$id" "$desc" "$ERR" 'operation interrupted' || return
+    pass "$id" "$desc"
+}
+
+run_test_qa99b() {
+    local id="qa-99b" desc="SIGPIPE from closed stdout pipe exits gracefully (CWE-755)"
+    local payload_file="${TMP_DIR}/payload_pipe"
+    dd if=/dev/zero bs=1 count=49152 2>/dev/null | tr '\0' 'A' > "$payload_file"
+
+    # Test piping into head -c 0
+    local rc=0
+    "$SALT_BIN" --key "$PUB_KEY" - < "$payload_file" 2>"$ERR" | head -c 0 >/dev/null || rc="${PIPESTATUS[0]}"
+
+    # 141 is SIGPIPE. salt may also report graceful stream failure as SALT_ERR_IO (4),
+    # and some shells/stdio paths may normalize to 1 or 0.
+    if [[ "$rc" -ne 141 ]] && [[ "$rc" -ne 4 ]] && [[ "$rc" -ne 1 ]] && [[ "$rc" -ne 0 ]]; then
+        fail "$id" "$desc" "expected SIGPIPE (141) or graceful exit (4/1/0), got $rc"
+        return
+    fi
+
     pass "$id" "$desc"
 }
 
@@ -898,6 +1155,16 @@ run_test_qa123() {
     pass "$id" "$desc"
 }
 
+run_test_qa124() {
+    local id="qa-124" desc="Mathematically invalid all-zero public key safely rejected by crypto subsystem (CWE-345)"
+    local weak_key="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    local rc
+    rc="$(run_salt_rc "$OUT" "$ERR" --key "$weak_key" 'hello')"
+    assert_exit_code       "$id" "$desc" 2 "$rc" || return
+    assert_stderr_contains "$id" "$desc" "$ERR" 'encrypt' || return
+    pass "$id" "$desc"
+}
+
 # ---------------------------------------------------------------------------
 # Run all tests
 # ---------------------------------------------------------------------------
@@ -912,13 +1179,18 @@ run_test_qa11
 run_test_qa12
 run_test_qa13
 run_test_qa14
+run_test_qa15
+run_test_qa16
 
 run_test_qa20
 run_test_qa21
 run_test_qa22
+run_test_qa23
 
 run_test_qa30
 run_test_qa31
+run_test_qa32
+run_test_qa33
 
 run_test_qa40
 
@@ -929,11 +1201,15 @@ run_test_qa53
 run_test_qa54
 run_test_qa55
 run_test_qa56
+run_test_qa57
 
 run_test_qa60
 run_test_qa61
 run_test_qa62
 run_test_qa63
+run_test_qa64
+run_test_qa65
+run_test_qa66
 
 run_test_qa70
 run_test_qa71
@@ -949,12 +1225,25 @@ run_test_qa81
 run_test_qa82
 run_test_qa83
 run_test_qa84
+run_test_qa84a
+run_test_qa84b
+run_test_qa84c
 run_test_qa85
 run_test_qa86
+run_test_qa87
+run_test_qa88
+run_test_qa88a
+run_test_qa88b
+run_test_qa88c
+run_test_qa88d
+run_test_qa89
+run_test_qa89a
+run_test_qa89b
 
 run_test_qa90
 run_test_qa91
 run_test_qa92
+run_test_qa92a
 run_test_qa93
 run_test_qa94
 run_test_qa95
@@ -963,6 +1252,7 @@ run_test_qa97
 run_test_qa98
 run_test_qa99
 run_test_qa99a
+run_test_qa99b
 
 run_test_qa100
 run_test_qa101
@@ -976,10 +1266,7 @@ run_test_qa120
 run_test_qa121
 run_test_qa122
 run_test_qa123
-
-# ---------------------------------------------------------------------------
-# Summary
-# ---------------------------------------------------------------------------
+run_test_qa124
 
 TOTAL=$(( PASS_COUNT + FAIL_COUNT ))
 printf '\n'

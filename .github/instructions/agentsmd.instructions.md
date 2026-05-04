@@ -45,7 +45,7 @@ AGENTS.md complements README.md: README is for human users, AGENTS.md is for AI 
 - Use code blocks with language identifiers
 - List the primary language standard, compiler requirements, and key library versions
 - Document all `make` targets in a table format
-- Include toolchain and key dependency version requirements (e.g., C11, libsodium ≥ 1.0.18)
+- Include toolchain and key dependency version requirements (e.g., C17, libsodium ≥ 1.0.18)
 - Describe shared modules and their responsibilities
 - Note architecture rules (e.g., "all library logic in `src/`, public API in `include/`")
 - Keep technical — this is for agents, not marketing

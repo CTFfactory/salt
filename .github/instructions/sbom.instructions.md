@@ -13,6 +13,7 @@ These instructions apply when editing Syft installation, Syft CLI invocation, Sy
 - Download Syft from the versioned Anchore release URL and verify the SHA256 checksum before extraction.
 - Do not use unpinned Syft actions, package-manager floating versions, or `latest` URLs.
 - Keep Makefile Syft variables and release workflow Syft environment values synchronized.
+- Keep Parlay pinned by exact `PARLAY_VERSION` and `PARLAY_SHA256` for reproducible enrichment output and supply-chain integrity.
 
 ## Syft Invocation
 
@@ -29,6 +30,12 @@ These instructions apply when editing Syft installation, Syft CLI invocation, Sy
 - Do not scan the full repository, build directory, or host filesystem for release SBOMs.
 - Do not depend on host OS package databases for release archive dependency metadata.
 - Enable all-file metadata for release staging scans with `SYFT_FILE_METADATA_SELECTION=all` or equivalent shared configuration so Syft, not post-processing, supplies shipped file entries, hashes, and executable metadata.
+
+## File Metadata Selection
+
+- Keep `SYFT_FILE_METADATA_SELECTION=all` for release SBOM generation in both Makefile and workflow paths.
+- Documented alternatives like `digests` or `none` are acceptable only for exploratory local runs; they are not release-compatible because shipped-file metadata becomes incomplete.
+- If this value changes, validate that SPDX/CycloneDX shipped-file checksum and file-type assertions still pass.
 
 ## Syft Configuration
 

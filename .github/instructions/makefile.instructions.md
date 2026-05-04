@@ -33,7 +33,7 @@ Write clear and deterministic GNU Make targets for this C CLI project.
 
 ```makefile
 CC ?= cc
-CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -O2
+CFLAGS ?= -std=c17 -Wall -Wextra -Wpedantic -O2
 CPPFLAGS ?=
 LDFLAGS ?=
 LDLIBS ?= -lsodium

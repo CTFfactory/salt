@@ -36,7 +36,7 @@ FROM ubuntu:24.04@${UBUNTU_DIGEST} AS deb
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends         autoconf=2.71-3         automake=1:1.16.5-1.3ubuntu1         ca-certificates=20240203         curl=8.5.0-2ubuntu10.8         dpkg=1.22.6ubuntu6.5         gcc=4:13.2.0-7ubuntu1         gzip=1.12-1ubuntu3.1         libc6-dev=2.39-0ubuntu8.7         libtool=2.4.7-7build1         libsodium-dev=1.0.18-1ubuntu0.24.04.1         make=4.3-4.1build2         pkg-config=1.8.1-2build1     && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends         autoconf=2.71-3         automake=1:1.16.5-1.3ubuntu1         dpkg=1.22.6ubuntu6.5         gcc=4:13.2.0-7ubuntu1         gzip=1.12-1ubuntu3.1         libc6-dev=2.39-0ubuntu8.7         libtool=2.4.7-7build1         libsodium-dev=1.0.18-1ubuntu0.24.04.1         make=4.3-4.1build2         pkg-config=1.8.1-2build1     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 COPY . ./

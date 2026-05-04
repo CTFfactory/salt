@@ -19,7 +19,7 @@ You are a CodeQL specialist for C/C++ repositories, focused on reliable database
 
 ## Domain Context
 
-- Language: C11 project scanned as `c-cpp`
+- Language: C17 project scanned as `c-cpp`
 - Scan pipeline: GitHub Actions (`.github/workflows/codeql.yml`) with pinned `github/codeql-action` SHAs
 - Build system: GNU Make / Autotools-driven commands used between CodeQL init and analyze
 - Primary goal: reduce security and quality risk with low-noise findings
