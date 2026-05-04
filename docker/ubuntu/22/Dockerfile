@@ -43,7 +43,7 @@ FROM ubuntu:22.04@${UBUNTU_DIGEST} AS deb
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends         autoconf=2.71-2         automake=1:1.16.5-1.3         ca-certificates=20240203~22.04.1         curl=7.81.0-1ubuntu1.23         dpkg=1.21.1ubuntu2.6         gcc=4:11.2.0-1ubuntu1         gzip=1.10-4ubuntu4.1         libc6-dev=2.35-0ubuntu3.13         libtool=2.4.6-15build2         libsodium-dev=1.0.18-1ubuntu0.22.04.1         make=4.3-4.1build1         pkg-config=0.29.2-1ubuntu3     && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends         autoconf=2.71-2         automake=1:1.16.5-1.3         dpkg=1.21.1ubuntu2.6         gcc=4:11.2.0-1ubuntu1         gzip=1.10-4ubuntu4.1         libc6-dev=2.35-0ubuntu3.13         libtool=2.4.6-15build2         libsodium-dev=1.0.18-1ubuntu0.22.04.1         make=4.3-4.1build1         pkg-config=0.29.2-1ubuntu3     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 COPY . ./

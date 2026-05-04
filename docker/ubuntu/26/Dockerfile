@@ -36,7 +36,7 @@ FROM ubuntu:26.04@${UBUNTU_DIGEST} AS deb
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends         autoconf=2.72-3.1ubuntu2         automake=1:1.18.1-3build1         ca-certificates=20260223         curl=8.18.0-1ubuntu2         dpkg=1.23.7ubuntu1         gcc=4:15.2.0-5ubuntu1         gzip=1.14-1~exp2ubuntu1         libc6-dev=2.43-2ubuntu2         libtool=2.5.4-9         libsodium-dev=1.0.18-2         make=4.4.1-3         pkg-config=2.5.1-4     && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends         autoconf=2.72-3.1ubuntu2         automake=1:1.18.1-3build1         dpkg=1.23.7ubuntu1         gcc=4:15.2.0-5ubuntu1         gzip=1.14-1~exp2ubuntu1         libc6-dev=2.43-2ubuntu2         libtool=2.5.4-9         libsodium-dev=1.0.18-2         make=4.4.1-3         pkg-config=2.5.1-4     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 COPY . ./

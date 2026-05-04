@@ -1,0 +1,72 @@
+---
+# Custom CodeQL query pack for salt CLI
+# Provides specialized queries for cryptographic code patterns and libsodium integration
+
+name: salt-custom-queries
+version: 1.0.0
+description: |
+  Custom CodeQL queries for the salt CLI project, focused on cryptographic correctness,
+  libsodium API usage patterns, and CLI input validation.
+
+dependencies:
+  codeql/cpp-queries: "*"
+
+extensionTargets:
+  codeql/cpp-queries:
+    - rules:
+        - c/libsodium-sealed-box-misuse
+
+rules:
+  - id: c/libsodium-sealed-box-misuse
+    name: Libsodium Sealed-Box Usage Validation
+    description: >-
+      Detects potential misuse of libsodium sealed-box APIs, specifically:
+      - crypto_box_seal called without key size validation
+      - Mismatched buffer sizes for ciphertext output
+      - Missing sodium_mlock for sensitive buffers
+    kind: problem
+    severity: warning
+    precision: high
+    tags:
+      - security/cryptography
+      - security/libsodium
+    file: libsodium-sealed-box-misuse.ql
+
+  - id: c/sensitive-buffer-not-locked
+    name: Sensitive Buffer Not Locked with sodium_mlock
+    description: >-
+      Detects plaintext or key buffers that should be locked in memory with sodium_mlock()
+      to prevent swapping to disk, but are not explicitly locked.
+    kind: problem
+    severity: medium
+    precision: medium
+    tags:
+      - security/cryptography
+      - security/libsodium
+      - memory-safety
+    file: sensitive-buffer-not-locked.ql
+
+  - id: c/plaintext-length-not-validated
+    name: Plaintext Length Not Validated Before Processing
+    description: >-
+      Detects cases where plaintext from stdin or arguments is not validated for length
+      before being used for allocation or copying.
+    kind: problem
+    severity: high
+    precision: high
+    tags:
+      - security/input-validation
+      - memory-safety
+    file: plaintext-length-not-validated.ql
+
+  - id: c/decoded-key-not-freed
+    name: Decoded Key Not Freed After Use
+    description: >-
+      Detects cases where a base64-decoded public key is allocated but not freed on all code paths.
+    kind: problem
+    severity: medium
+    precision: high
+    tags:
+      - memory-safety
+      - resource-leak
+    file: decoded-key-not-freed.ql

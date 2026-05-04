@@ -25,7 +25,7 @@ Design and maintain reliable E2E checks that prove the compiled `salt` binary be
 ## Domain Context
 
 - **Primary E2E gate:** `make test-qa`, which runs `scripts/qa.sh` against the compiled CLI.
-- **Cross-environment gate:** `make test-docker`, which validates supported Ubuntu release containers under `docker/ubuntu/{20,22,24,26}/`.
+- **Cross-environment gate:** `make test-docker`, which validates supported Ubuntu release containers under `docker/ubuntu/{22,24,26}/`.
 - **Full release gate:** `make ci`, which combines build, unit, sanitizer, Valgrind, coverage, fuzz regression, benchmark, docs, lint, and Copilot validation checks.
 - **CLI binary:** `bin/salt`; static build: `bin/salt-static`.
 - **Roundtrip helper:** `build/verify_roundtrip_helper`, used by black-box QA to decrypt generated ciphertext and prove encryption succeeds.

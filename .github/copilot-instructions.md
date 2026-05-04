@@ -8,6 +8,22 @@ When a task touches only one domain, route directly to the matching specialist. 
 
 Use this guide together with `.github/instructions/*.instructions.md` and `.github/skills/*/SKILL.md`: routing decides who should do the work, instructions define file-level rules, and skills provide reusable workflows.
 
+## Audit-to-Plan Workflow
+
+Many specialist agents have corresponding audit skills that systematically scan their domain for weaknesses, code smells, or configuration issues. When these agents are invoked, they follow a unified audit-to-plan workflow:
+
+1. **Audit Discovery** — Agent invokes its domain audit skill to identify current state
+2. **Finding Prioritization** — Findings are grouped by severity and CWE/rule class
+3. **Plan Generation** — Structured implementation plan is created from findings
+4. **User Review** — Agent exits plan mode to show audit results and plan for approval
+5. **Execution Tracking** — SQL-backed todos with validation gates track implementation
+
+Agents with audit capabilities declare them in their frontmatter with:
+- `audit-skill` — name of the audit skill to invoke
+- `audit-scope` — default scope for audit (e.g., `src/`, `include/`)
+
+For details on this workflow and which agents support audits, see `.github/instructions/audit-to-plan.instructions.md`.
+
 ## Task Routing
 
 - Copilot customization files (`.github/agents`, `.github/instructions`, `.github/prompts`, `.github/skills`): use `Copilot Config Expert`
@@ -16,6 +32,7 @@ Use this guide together with `.github/instructions/*.instructions.md` and `.gith
 - Repository structure and module boundaries: use `Repo Architect`
 - CI workflows and Makefile automation: use `CI/CD Pipeline Architect`
 - Release orchestration and changelog/versioning: use `Release Automation Expert`
+- Release artifact signing, GPG key handling in GitHub Actions secrets, and build provenance attestation: use `Release Signing & Attestation Expert`
 - Syft CLI usage, Syft configuration, cataloger behavior, Syft version/checksum installation, SPDX/CycloneDX SBOM generation, SBOM post-processing, release SBOM metadata, `make sbom`, and Snyk/Trivy SBOM-replacement tradeoff analysis: use `SBOM Expert`
 - Snyk/Trivy security-scan integration in Make/CI (tokens, cache/update behavior, fail-on policy, and deterministic gate design): use `CI/CD Pipeline Architect` with `SBOM Expert`
 - Operational deployment and infrastructure tooling: use `DevOps Expert`
@@ -77,6 +94,7 @@ Use these sequences when a request spans multiple domains.
 - Helper scripts plus GitHub Secrets flows: `Bash Script Expert` -> `Libsodium Expert` -> `E2E QA Engineer` -> `SE: Tech Writer` (if docs change)
 - Autotools and build-system validation: `GNU Autotools Expert` -> `CI/CD Pipeline Architect` (if gates change)
 - CI pipeline plus release: `CI/CD Pipeline Architect` -> `Dependency Pinning Expert` -> `Release Automation Expert`
+- Release signing and provenance rollout: `Release Signing & Attestation Expert` -> `CI/CD Pipeline Architect` -> `Dependency Pinning Expert` -> `Release Automation Expert` -> `SE: Tech Writer`
 - SBOM release metadata: `SBOM Expert` -> `Dependency Pinning Expert` (if Syft/Snyk/Trivy pins change) -> `Release Automation Expert` (if release assets or checksums change) -> `SE: Tech Writer` (if docs change)
 - Snyk/Trivy adoption or replacement analysis: `SBOM Expert` -> `CI/CD Pipeline Architect` -> `Dependency Pinning Expert` -> `Release Automation Expert` (if release artifacts or checksums change)
 - Copilot customization plus content quality: `Copilot Config Expert` -> `Prompt Engineer` -> `Principal Software Engineer` (for trade-offs)

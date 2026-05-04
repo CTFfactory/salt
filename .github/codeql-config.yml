@@ -1,0 +1,22 @@
+---
+name: "Enterprise-grade CodeQL configuration for the salt C CLI"
+
+# Query suites to run in addition to the default security-and-quality pack
+queries:
+  - uses: security-extended
+
+# Disable noisy queries not relevant to a focused C11 library/CLI
+disable-default-queries: false
+
+# Paths to include/exclude from analysis
+paths:
+  - src
+  - include
+  - fuzz
+  - bench
+  - tests
+paths-ignore:
+  - build
+  - .fuzz
+  - tests/fixtures
+

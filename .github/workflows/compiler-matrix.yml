@@ -1,0 +1,85 @@
+name: Compiler Matrix (Manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SALT_CI_UBUNTU_VERSION: '24.04'
+  SALT_CI_ALLOW_DYNAMIC_APT_REPOS: '0'
+
+jobs:
+  gcc-matrix:
+    name: GCC Matrix (v${{ matrix.gcc_version }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        gcc_version: [9, 10, 11, 12, 13]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install runner prerequisites
+        run: ./scripts/install-ci-runner.sh
+      - name: Verify runner prerequisites
+        run: ./scripts/check-ci-runner.sh
+      - name: Bootstrap GNU build files
+        run: ./bootstrap
+      - name: Configure out-of-tree build
+        run: |
+          mkdir -p build/autotools
+          cd build/autotools
+          ../../configure --enable-tests CC="gcc-${{ matrix.gcc_version }}"
+      - name: Run tests with matrix compiler
+        run: |
+          cd build/autotools
+          make test
+
+  clang-matrix:
+    name: Clang Matrix (v${{ matrix.clang_version }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        clang_version: [14, 15, 16, 17, 18]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install runner prerequisites
+        run: ./scripts/install-ci-runner.sh
+      - name: Verify runner prerequisites
+        run: ./scripts/check-ci-runner.sh
+      - name: Bootstrap GNU build files
+        run: ./bootstrap
+      - name: Configure out-of-tree build
+        run: |
+          mkdir -p build/autotools
+          cd build/autotools
+          ../../configure --enable-tests CC="clang-${{ matrix.clang_version }}"
+      - name: Run tests with matrix compiler
+        run: |
+          cd build/autotools
+          make test
+
+  matrix-full:
+    name: Matrix Full Gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [gcc-matrix, clang-matrix]
+    if: always()
+    steps:
+      - name: Assert matrix jobs succeeded
+        run: |
+          set -euo pipefail
+          echo "gcc-matrix=${{ needs.gcc-matrix.result }}"
+          echo "clang-matrix=${{ needs.clang-matrix.result }}"
+          [ "${{ needs.gcc-matrix.result }}" = "success" ]
+          [ "${{ needs.clang-matrix.result }}" = "success" ]

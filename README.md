@@ -17,7 +17,7 @@
 
 **`salt`** is a lightweight CLI tool that leverages libsodium's sealed-box primitives. It encrypts data using only a recipient's public key, so only the holder of the corresponding private key can decrypt the value.
 
-Repository: <https://github.com/CTFfactory/salt>
+["If I have seen further, it is by standing on the shoulders of giants."](https://en.wikipedia.org/wiki/Standing_on_the_shoulders_of_giants) -- Sir Isaac Newton
 
 ## Overview
 
@@ -189,11 +189,10 @@ The table below documents tested and validated build environments. Other Linux d
 | Environment | amd64 | Notes |
 |-------------|-------|-------|
 | Generic Linux source build | ✅ | Build with the canonical GNU flow (`./configure && make && make check`) when libsodium and cmocka development packages are available. |
-| Ubuntu 20.04 container | ✅ | Tested via `docker/ubuntu/20/Dockerfile`. |
 | Ubuntu 22.04 container | ✅ | Tested via `docker/ubuntu/22/Dockerfile`. |
 | Ubuntu 24.04 container | ✅ | Tested via `docker/ubuntu/24/Dockerfile`; main CI host environment. |
 | Ubuntu 26.04 container | ✅ | Tested via `docker/ubuntu/26/Dockerfile`. |
-| Release archives | ✅ | `salt-linux-amd64.tar.gz` (template layout rooted with docs, scripts, coverage HTML, man page, and both `salt` and `salt-static` binaries in `bin/`), Ubuntu 22/24/26 `.deb` packages, and matching SPDX JSON/CycloneDX JSON SBOMs. |
+| Release archives | ✅ | `salt-linux-amd64.tar.gz` (template layout rooted with docs, scripts, coverage HTML, man page, static `salt`, and dynamic `salt-dynamic` in `bin/`), Ubuntu 22/24/26 `.deb` packages, and matching SPDX JSON/CycloneDX JSON SBOMs. |
 
 ## Exit Codes
 
@@ -226,7 +225,67 @@ make man
 GitHub Actions is used for CI/CD:
 
 - `.github/workflows/ci.yml` runs `make ci-fast` for the smoke gate and `make ci` for the full GNU Autotools gate.
-- `.github/workflows/release.yml` runs only for SemVer tags matching `v*`, reuses the same out-of-tree GNU flow (`./bootstrap`, `../../configure --enable-tests`, `make ci`), and then publishes template-layout `salt-linux-amd64.tar.gz` (containing both `salt` and `salt-static` under `salt.tar/bin/`), Ubuntu 22/24/26 `.deb` packages, matching SPDX JSON and CycloneDX JSON SBOMs, and `SHA256SUMS`; CycloneDX SBOM enrichment includes Ubuntu package/version provenance for build inputs (for example `gcc`, `clang`, `make`, `libc-bin`/`ldd`, `binutils`, `autoconf`, `automake`, `libtool`, `pkg-config`, and libsodium packages), while SPDX remains focused on runtime package and shipped-file metadata.
+- `.github/workflows/release.yml` runs only for SemVer tags matching `v*`, reuses the same out-of-tree GNU flow (`./bootstrap`, `../../configure --enable-tests`, `make ci`), and then publishes template-layout `salt-linux-amd64.tar.gz` (containing static `salt` and dynamic `salt-dynamic` under `salt/bin/`), Ubuntu 22/24/26 `.deb` packages built with `dpkg-deb`, matching SPDX JSON and CycloneDX JSON SBOMs, `SHA256SUMS`, and `SHA256SUMS.asc`; `.deb` artifacts are signed natively with embedded Debian signatures and the tarball/checksum manifest are detached-signed with GPG. CycloneDX SBOM enrichment includes Ubuntu package/version provenance for build inputs (for example `gcc`, `clang`, `make`, `libc-bin`/`ldd`, `binutils`, `autoconf`, `automake`, `libtool`, `pkg-config`, and libsodium packages), while SPDX remains focused on runtime package and shipped-file metadata.
+
+## Verifying Release Integrity
+
+Release integrity can be verified by validating SBOMs and release checksums. This section covers how auditors and security teams can reproduce and cross-verify release artifacts.
+
+### Validating SBOMs with Syft
+
+Each release publishes four SBOMs (Software Bill of Materials):
+- `salt-linux-amd64.spdx.json` and `salt-linux-amd64.cyclonedx.json` (dynamic binary)
+- `salt-static-linux-amd64.spdx.json` and `salt-static-linux-amd64.cyclonedx.json` (static binary)
+
+To regenerate and validate an SBOM locally using Syft 1.44.0:
+
+```sh
+# Install Syft 1.44.0 pinned by SHA256
+SYFT_VERSION="1.44.0"
+SYFT_SHA256="0e91737aee2b5baf1d255b959630194a302335d848ff97bb07921eb6205b5f5a"
+# See .github/workflows/release.yml for exact SHA256 and download URL
+
+# Extract release staging binaries and regenerate SPDX/CycloneDX formats
+syft dir:./salt-linux-amd64 \
+  --source-name salt \
+  --source-supplier CTFfactory \
+  --source-version v0.0.0 \
+  -o spdx-json=salt-linux-amd64-local.spdx.json \
+  -o cyclonedx-json=salt-linux-amd64-local.cyclonedx.json
+```
+
+### Cross-Verifying SBOM Checksums
+
+After generating SBOMs locally, verify they match the released checksums:
+
+```sh
+# Download and verify release checksum manifest
+curl -sS -L -o SHA256SUMS https://github.com/CTFfactory/salt/releases/download/v0.0.0/SHA256SUMS
+curl -sS -L -o SHA256SUMS.asc https://github.com/CTFfactory/salt/releases/download/v0.0.0/SHA256SUMS.asc
+grep -E '(spdx|cyclonedx)' SHA256SUMS | sha256sum -c -
+
+# Verify checksum manifest signature (release signing key required)
+gpg --verify SHA256SUMS.asc SHA256SUMS
+
+# Inspect embedded Debian signatures
+debsigs --list salt_0.0.0-1ubuntu24_amd64.deb
+
+# The output should confirm all SBOM checksums match
+```
+
+### Security Scanning with Snyk and Trivy
+
+Release SBOMs can be scanned for known vulnerabilities using Snyk or Trivy:
+
+```sh
+# Snyk scan (requires Snyk account)
+snyk sbom test salt-linux-amd64.cyclonedx.json
+
+# Trivy scan (no account required)
+trivy sbom salt-linux-amd64.spdx.json
+```
+
+For guidance on SBOM standards and generation, see `.github/instructions/sbom.instructions.md`.
 
 ## Troubleshooting
 
@@ -282,7 +341,7 @@ Every API call below should include:
 - `Authorization: Bearer ${GITHUB_TOKEN}`
 - `X-GitHub-Api-Version: 2022-11-28`
 
-**API Version Policy**: This documentation and the example scripts reference GitHub REST API version `2022-11-28`, which is the current stable version for Actions Secrets endpoints as of 2026-04-30. Consult the [GitHub REST API versioning documentation](https://docs.github.com/en/rest/about-the-rest-api/api-versions) if newer versions introduce changes to request/response formats or required headers.
+**API Version Policy**: This documentation and the example scripts reference GitHub REST API version `2022-11-28`, which is the current stable version for Actions Secrets endpoints as of 2026-04-29. Consult the [GitHub REST API versioning documentation](https://docs.github.com/en/rest/about-the-rest-api/api-versions) if newer versions introduce changes to request/response formats or required headers.
 
 The examples below and the packaged `examples/set-*-secret.sh` scripts use a small helper plus process substitution (`-H @<(...)`) so `GITHUB_TOKEN` does not appear in `/proc/<pid>/cmdline`. The packaged scripts also accept a `SECRET_VALUE_FILE` environment variable so plaintext does not enter `/proc/<pid>/environ`; prefer it over `SECRET_VALUE` for real secrets.
 
@@ -408,6 +467,7 @@ Until then, treat `main` as the development line with evolving documentation, te
 - **man/salt.1** - Manual page for the `salt` CLI (validate with `make man`)
 - **docs/** - Supporting documentation including lint suppressions, libsodium usage inventory, and Ubuntu package lists
 - **examples/** - Executable helper scripts for GitHub Actions secret workflows (repository, environment, and organization scopes)
+- **m4/** - Custom GNU Autotools macros for libsodium/cmocka discovery and SBOM tool detection (maintainer reference only)
 
 ## Contributing
 
@@ -433,3 +493,13 @@ Runtime hardening built into the production binary:
 ## License
 
 This project is released under The Unlicense. See `LICENSE`.
+
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this software, either in source code form or as a compiled binary, for any purpose, commercial or non-commercial, and by any means.
+
+In jurisdictions that recognize copyright laws, the author or authors of this software dedicate any and all copyright interest in the software to the public domain. We make this dedication for the benefit of the public at large and to the detriment of our heirs and successors. We intend this dedication to be an overt act of relinquishment in perpetuity of all present and future rights to this software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For more information, please refer to <https://unlicense.org>

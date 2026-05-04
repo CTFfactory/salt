@@ -1,4 +1,40 @@
 #!/usr/bin/env sh
 set -eu
 
+echo "========================================="
+echo "Bootstrapping GNU Build System"
+echo "========================================="
+echo ""
+
+# Show tool versions for diagnostics
+echo "Tool Versions:"
+echo "  Autoconf: $(autoconf --version | head -n1)"
+echo "  Automake: $(automake --version | head -n1)"
+if command -v libtool >/dev/null 2>&1; then
+  echo "  Libtool:  $(libtool --version | head -n1)"
+else
+  echo "  Libtool:  (not found - optional)"
+fi
+echo ""
+
+# Run autoreconf to generate build system files
+echo "Running autoreconf -fi..."
 autoreconf -fi
+
+echo ""
+echo "========================================="
+echo "Bootstrap complete"
+echo "========================================="
+echo ""
+echo "Next steps:"
+echo "  1. Create a build directory: mkdir build && cd build"
+echo "  2. Run configure: ../configure [options]"
+echo "     Common options:"
+echo "       --enable-debug          Build with debug symbols and no optimization"
+echo "       --enable-tests          Enable cmocka-based unit tests (default: yes)"
+echo "       --disable-hardening     Disable security hardening flags"
+echo "       --host=...              Cross-compile for target (e.g., x86_64-w64-mingw32)"
+echo "  3. Build: make"
+echo "  4. Test: make test"
+echo "  5. Install: make install"
+echo ""

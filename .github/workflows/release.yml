@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,18 +14,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  LIBSODIUM_DEV_VERSION: 1.0.18-1ubuntu0.24.04.1
+  SALT_CI_UBUNTU_VERSION: '24.04'
+  SALT_CI_ALLOW_DYNAMIC_APT_REPOS: '0'
   LIBSODIUM_UPSTREAM_VERSION: 1.0.18
-  LIBCMOCKA_DEV_VERSION: 1.1.7-3
-  MAKE_VERSION: 4.3-4.1build2
-  MAN_DB_VERSION: 2.12.0-4build2
-  GCOVR_VERSION: 7.0-1
-  AUTOCONF_VERSION: 2.71-3
-  AUTOMAKE_VERSION: 1:1.16.5-1.3ubuntu1
-  LIBTOOL_VERSION: 2.4.7-7build1
-  PKG_CONFIG_VERSION: 1.8.1-2build1
-  SYFT_VERSION: 1.43.0
-  SYFT_SHA256: 7b98251d2d08926bb5d4639b56b1f0996a58ef6667c5830e3fe3cd3ad5f4214a
+  SYFT_VERSION: 1.44.0
+  SYFT_SHA256: 0e91737aee2b5baf1d255b959630194a302335d848ff97bb07921eb6205b5f5a
   PARLAY_VERSION: 0.11.0
   PARLAY_SHA256: 2654d8e91c53f8e264f439684f657fc0139a8c13d842c30aa4f12c9cc9be1243
   PARLAY_SNYK_ENRICH: 0
@@ -46,38 +40,111 @@ env:
   SBOM_BUILD_TOOL_PKG_CONFIG: pkg-config
 
 jobs:
-  test-docker:
-    name: Cross-Version Container Test
+  codeql-gate:
+    name: CodeQL Critical/High Gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       contents: read
-    runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        ubuntu_version: ['20', '22', '24', '26']
+      security-events: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Build and test Ubuntu ${{ matrix.ubuntu_version }} container
+      - name: Block release when CodeQL has open critical/high alerts on main
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          docker build -f docker/ubuntu/${{ matrix.ubuntu_version }}/Dockerfile -t salt-test:${{ matrix.ubuntu_version }} .
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
 
-      - name: Verify container artifact
-        run: |
-          docker run --rm salt-test:${{ matrix.ubuntu_version }} --version
+          repo = os.environ["GITHUB_REPOSITORY"]
+          token = os.environ["GITHUB_TOKEN"]
+          base_url = f"https://api.github.com/repos/{repo}/code-scanning/alerts"
+          common_headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+          }
+
+          alerts = []
+          page = 1
+          while True:
+              query = urllib.parse.urlencode({
+                  "state": "open",
+                  "tool_name": "CodeQL",
+                  "ref": "refs/heads/main",
+                  "per_page": "100",
+                  "page": str(page),
+              })
+              url = f"{base_url}?{query}"
+              last_error = None
+              for attempt in range(5):
+                  try:
+                      request = urllib.request.Request(url, headers=common_headers)
+                      with urllib.request.urlopen(request, timeout=30) as response:
+                          batch = json.load(response)
+                      break
+                  except (urllib.error.URLError, TimeoutError) as err:
+                      last_error = err
+                      time.sleep(2 * (attempt + 1))
+              else:
+                  print(f"ERROR: failed to query CodeQL alerts page {page}: {last_error}", file=sys.stderr)
+                  sys.exit(1)
+
+              if not batch:
+                  break
+
+              alerts.extend(batch)
+              page += 1
+
+          blocked = []
+          for alert in alerts:
+              severity = (alert.get("rule", {}).get("security_severity_level") or "").lower()
+              if severity in ("critical", "high"):
+                  blocked.append({
+                      "number": alert.get("number"),
+                      "severity": severity,
+                      "rule": alert.get("rule", {}).get("id", "unknown-rule"),
+                      "url": alert.get("html_url", ""),
+                  })
+
+          if blocked:
+              print("ERROR: release blocked; open CodeQL critical/high alerts exist on refs/heads/main:", file=sys.stderr)
+              for item in blocked[:20]:
+                  print(
+                      f"- #{item['number']} [{item['severity']}] {item['rule']} {item['url']}",
+                      file=sys.stderr,
+                  )
+              if len(blocked) > 20:
+                  print(f"... plus {len(blocked) - 20} more alerts", file=sys.stderr)
+              sys.exit(1)
+
+          print("OK: no open CodeQL critical/high alerts on refs/heads/main.")
+          PY
 
   release-check:
     name: Release Quality Gate
     permissions:
       contents: read
+      attestations: write
+      id-token: write
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    needs: test-docker
+    timeout-minutes: 45
+    needs: codeql-gate
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install runner prerequisites
+        run: ./scripts/install-ci-runner.sh
+
+      - name: Verify runner prerequisites
+        run: ./scripts/check-ci-runner.sh
 
       - name: Validate SemVer tag
         run: |
@@ -88,27 +155,6 @@ jobs:
             exit 1
           fi
           echo "OK: tag $tag is valid SemVer"
-
-      - name: Cache APT archives
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
-        with:
-          path: /var/cache/apt/archives
-          key: apt-24.04-release-${{ env.LIBSODIUM_DEV_VERSION }}-${{ env.LIBCMOCKA_DEV_VERSION }}-${{ env.MAKE_VERSION }}-${{ env.MAN_DB_VERSION }}-${{ env.GCOVR_VERSION }}-${{ env.AUTOCONF_VERSION }}-${{ env.AUTOMAKE_VERSION }}-${{ env.LIBTOOL_VERSION }}-${{ env.PKG_CONFIG_VERSION }}
-
-      - name: Install dependencies
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            autoconf="${AUTOCONF_VERSION}" \
-            automake="${AUTOMAKE_VERSION}" \
-            libtool="${LIBTOOL_VERSION}" \
-            pkg-config="${PKG_CONFIG_VERSION}" \
-            libsodium-dev="${LIBSODIUM_DEV_VERSION}" \
-            libcmocka-dev="${LIBCMOCKA_DEV_VERSION}" \
-            make="${MAKE_VERSION}" \
-            man-db="${MAN_DB_VERSION}" \
-            gcovr="${GCOVR_VERSION}"
 
       - name: Bootstrap Autotools
         run: ./bootstrap
@@ -134,17 +180,17 @@ jobs:
           strip salt
           strip salt-static
 
-          # Keep minimal staging for SBOM generation.
-          rm -rf ../../release-staging ../../release-template
-          mkdir -p ../../release-staging/dynamic ../../release-staging/static
-          cp salt ../../release-staging/dynamic/salt
-          cp ../../man/salt.1 ../../release-staging/dynamic/salt.1
-          cp salt-static ../../release-staging/static/salt-static
-          cp ../../man/salt.1 ../../release-staging/static/salt.1
+          # Keep minimal staging for SBOM generation (use consistent sbom/staging/ directory).
+          rm -rf ../../sbom/staging ../../release-template
+          mkdir -p ../../sbom/staging/dynamic ../../sbom/staging/static
+          cp salt ../../sbom/staging/dynamic/salt
+          cp ../../man/salt.1 ../../sbom/staging/dynamic/salt.1
+          cp salt-static ../../sbom/staging/static/salt-static
+          cp ../../man/salt.1 ../../sbom/staging/static/salt.1
 
           # Build template-style tarball staging from canonical source/build outputs.
           make coverage-html
-          stage="../../release-template/salt.tar"
+          stage="../../release-template/salt"
           mkdir -p \
             "${stage}/bin" \
             "${stage}/coverage/dark" \
@@ -164,12 +210,12 @@ jobs:
           cp ../../examples/set-environment-secret.sh "${stage}/scripts/set-environment-secret.sh"
           cp -a coverage/dark/. "${stage}/coverage/dark/"
           cp -a coverage/light/. "${stage}/coverage/light/"
-          cp salt "${stage}/bin/salt"
-          cp salt-static "${stage}/bin/salt-static"
+          cp salt-static "${stage}/bin/salt"
+          cp salt "${stage}/bin/salt-dynamic"
           cd ../..
 
           # Create archives with deterministic template structure.
-          tar -czf salt-linux-amd64.tar.gz -C release-template salt.tar
+          tar -czf salt-linux-amd64.tar.gz -C release-template salt
 
       - name: Smoke test stripped binaries
         run: |
@@ -184,36 +230,36 @@ jobs:
           mkdir -p archive-test
 
           tar -xzf salt-linux-amd64.tar.gz -C archive-test
-          if [ ! -x archive-test/salt.tar/bin/salt ]; then
+          if [ ! -x archive-test/salt/bin/salt ]; then
             echo "ERROR: salt binary missing or not executable in archive template" >&2
             exit 1
           fi
-          if [ ! -x archive-test/salt.tar/bin/salt-static ]; then
-            echo "ERROR: salt-static binary missing or not executable in archive template" >&2
+          if [ ! -x archive-test/salt/bin/salt-dynamic ]; then
+            echo "ERROR: salt-dynamic binary missing or not executable in archive template" >&2
             exit 1
           fi
-          if [ ! -f archive-test/salt.tar/man/man1/salt.1 ]; then
+          if [ ! -f archive-test/salt/man/man1/salt.1 ]; then
             echo "ERROR: salt.1 man page missing in archive template" >&2
             exit 1
           fi
           for file in CONTRIBUTING.md INSTALL.md LICENSE README.md SECURITY.md TESTING.md CHANGELOG.md; do
-            if [ ! -f "archive-test/salt.tar/${file}" ]; then
+            if [ ! -f "archive-test/salt/${file}" ]; then
               echo "ERROR: ${file} missing in archive template" >&2
               exit 1
             fi
           done
           for script in set-repo-secret.sh set-org-secret.sh set-environment-secret.sh; do
-            if [ ! -f "archive-test/salt.tar/scripts/${script}" ]; then
+            if [ ! -f "archive-test/salt/scripts/${script}" ]; then
               echo "ERROR: ${script} missing in archive template" >&2
               exit 1
             fi
           done
-          if [ ! -f archive-test/salt.tar/coverage/dark/index.html ] || [ ! -f archive-test/salt.tar/coverage/light/index.html ]; then
+          if [ ! -f archive-test/salt/coverage/dark/index.html ] || [ ! -f archive-test/salt/coverage/light/index.html ]; then
             echo "ERROR: coverage index files missing in archive template" >&2
             exit 1
           fi
-          archive-test/salt.tar/bin/salt --version
-          archive-test/salt.tar/bin/salt-static --version
+          archive-test/salt/bin/salt --version
+          archive-test/salt/bin/salt-dynamic --version
           echo "OK: archive template extracts and both binaries execute"
 
       - name: Build Debian packages
@@ -221,9 +267,12 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           cd build/autotools
-          make package-deb-docker SALT_PACKAGE_VERSION="${version}" DEB_UBUNTU_VERSIONS="22 24 26"
-          cp packages/ubuntu*/*.deb ../..
+          make package-deb-docker SALT_PACKAGE_VERSION="${version}"
+          cp packages/ubuntu*/salt_*_amd64.deb ../..
           cd ../..
+          for ubuntu_version in 22 24 26; do
+            test -f "salt_${version}-1ubuntu${ubuntu_version}_amd64.deb"
+          done
           ls -l salt_*_amd64.deb
 
       - name: Install SBOM tools
@@ -231,14 +280,16 @@ jobs:
           set -euo pipefail
           mkdir -p build/tools
           syft_tarball="syft_${SYFT_VERSION}_linux_amd64.tar.gz"
-          curl -fsSL -o "build/tools/${syft_tarball}" "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/${syft_tarball}"
+          curl --retry 5 --retry-delay 2 --retry-connrefused --retry-max-time 120 -fsSL -o "build/tools/${syft_tarball}" \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/${syft_tarball}"
           echo "${SYFT_SHA256}  build/tools/${syft_tarball}" | sha256sum -c -
           tar -xzf "build/tools/${syft_tarball}" -C build/tools syft
           rm -f "build/tools/${syft_tarball}"
           build/tools/syft version
 
           parlay_tarball="parlay_${PARLAY_VERSION}_Linux_x86_64.tar.gz"
-          curl -fsSL -o "build/tools/${parlay_tarball}" "https://github.com/snyk/parlay/releases/download/v${PARLAY_VERSION}/parlay_Linux_x86_64.tar.gz"
+          curl --retry 5 --retry-delay 2 --retry-connrefused --retry-max-time 120 -fsSL -o "build/tools/${parlay_tarball}" \
+            "https://github.com/snyk/parlay/releases/download/v${PARLAY_VERSION}/parlay_Linux_x86_64.tar.gz"
           echo "${PARLAY_SHA256}  build/tools/${parlay_tarball}" | sha256sum -c -
           tar -xzf "build/tools/${parlay_tarball}" -C build/tools parlay
           rm -f "build/tools/${parlay_tarball}"
@@ -249,36 +300,94 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           source_ref="refs/tags/${GITHUB_REF_NAME}"
-          SYFT_FILE_METADATA_SELECTION="${SBOM_FILE_METADATA_SELECTION}" build/tools/syft dir:release-staging/dynamic \
+          SYFT_FILE_METADATA_SELECTION="${SBOM_FILE_METADATA_SELECTION}" build/tools/syft dir:sbom/staging/dynamic \
             --source-name "${SBOM_SOURCE_NAME}" \
             --source-supplier "${SBOM_SOURCE_SUPPLIER}" \
             --source-version "${version}" \
             -o spdx-json=salt-linux-amd64.spdx.json \
             -o cyclonedx-json=salt-linux-amd64.cyclonedx.json
-          SYFT_FILE_METADATA_SELECTION="${SBOM_FILE_METADATA_SELECTION}" build/tools/syft dir:release-staging/static \
+          SYFT_FILE_METADATA_SELECTION="${SBOM_FILE_METADATA_SELECTION}" build/tools/syft dir:sbom/staging/static \
             --source-name "${SBOM_SOURCE_NAME}" \
             --source-supplier "${SBOM_SOURCE_SUPPLIER}" \
             --source-version "${version}" \
             -o spdx-json=salt-static-linux-amd64.spdx.json \
             -o cyclonedx-json=salt-static-linux-amd64.cyclonedx.json
           ./scripts/collect-ubuntu-deps.sh --output ubuntu-build-provenance.json --root "libsodium23:libsodium-runtime" --root "libsodium-dev:libsodium-build" --root "${SBOM_BUILD_TOOL_CC}:salt-build-tool" --root "${SBOM_BUILD_TOOL_CLANG}:salt-build-tool" --root "${SBOM_BUILD_TOOL_MAKE}:salt-build-tool" --root "${SBOM_BUILD_TOOL_LIBC_DEV}:salt-build-tool" --root "${SBOM_BUILD_TOOL_LDD}:salt-build-tool" --root "${SBOM_BUILD_TOOL_BINUTILS}:salt-build-tool" --root "${SBOM_BUILD_TOOL_AUTOCONF}:salt-build-tool" --root "${SBOM_BUILD_TOOL_AUTOMAKE}:salt-build-tool" --root "${SBOM_BUILD_TOOL_LIBTOOL}:salt-build-tool" --root "${SBOM_BUILD_TOOL_PKG_CONFIG}:salt-build-tool"
-          ./scripts/add-libsodium-to-sbom.sh --project-url "${PROJECT_URL}" --license "${SBOM_LICENSE}" --copyright "${SBOM_COPYRIGHT}" --version "${LIBSODIUM_UPSTREAM_VERSION}" --salt-version "${version}" --source-ref "${source_ref}" --artifact-file "salt=release-staging/dynamic/salt" --artifact-file "salt.1=release-staging/dynamic/salt.1" salt-linux-amd64.spdx.json salt-linux-amd64.cyclonedx.json
-          ./scripts/add-libsodium-to-sbom.sh --project-url "${PROJECT_URL}" --license "${SBOM_LICENSE}" --copyright "${SBOM_COPYRIGHT}" --version "${LIBSODIUM_UPSTREAM_VERSION}" --salt-version "${version}" --source-ref "${source_ref}" --artifact-file "salt-static=release-staging/static/salt-static" --artifact-file "salt.1=release-staging/static/salt.1" salt-static-linux-amd64.spdx.json salt-static-linux-amd64.cyclonedx.json
+          ./scripts/add-libsodium-to-sbom.sh --project-url "${PROJECT_URL}" --license "${SBOM_LICENSE}" --copyright "${SBOM_COPYRIGHT}" --version "${LIBSODIUM_UPSTREAM_VERSION}" --salt-version "${version}" --source-ref "${source_ref}" --artifact-file "salt=sbom/staging/dynamic/salt" --artifact-file "salt.1=sbom/staging/dynamic/salt.1" salt-linux-amd64.spdx.json salt-linux-amd64.cyclonedx.json
+          ./scripts/add-libsodium-to-sbom.sh --project-url "${PROJECT_URL}" --license "${SBOM_LICENSE}" --copyright "${SBOM_COPYRIGHT}" --version "${LIBSODIUM_UPSTREAM_VERSION}" --salt-version "${version}" --source-ref "${source_ref}" --artifact-file "salt-static=sbom/staging/static/salt-static" --artifact-file "salt.1=sbom/staging/static/salt.1" salt-static-linux-amd64.spdx.json salt-static-linux-amd64.cyclonedx.json
           ./scripts/add-ubuntu-provenance-to-sbom.sh --deps ubuntu-build-provenance.json salt-linux-amd64.cyclonedx.json salt-static-linux-amd64.cyclonedx.json
           cd build/autotools
           make --no-print-directory sbom-parlay-run \
-            PARLAY_BIN="${PWD}/../tools/parlay" \
+            PARLAY_BIN="../tools/parlay" \
             PARLAY_SBOMS="../../salt-linux-amd64.spdx.json ../../salt-static-linux-amd64.spdx.json ../../salt-linux-amd64.cyclonedx.json ../../salt-static-linux-amd64.cyclonedx.json" \
             PARLAY_SNYK_ENRICH="${PARLAY_SNYK_ENRICH}"
           cd ../..
           ./scripts/validate-sbom.sh --salt-version "${version}" --ubuntu-deps ubuntu-build-provenance.json --spdx salt-linux-amd64.spdx.json:salt --spdx salt-static-linux-amd64.spdx.json:salt-static --cyclonedx salt-linux-amd64.cyclonedx.json:salt --cyclonedx salt-static-linux-amd64.cyclonedx.json:salt-static
           echo "OK: release SBOMs generated and validated"
 
-      - name: Verify checksums
+      - name: Sign release artifacts and checksums
+        env:
+          RELEASE_GPG_ECC_KEY_PRIVATE: ${{ secrets.RELEASE_GPG_ECC_KEY_PRIVATE }}
+          RELEASE_GPG_ECC_KEY_ID: ${{ secrets.RELEASE_GPG_ECC_KEY_ID }}
+          RELEASE_GPG_RSA_KEY_PRIVATE: ${{ secrets.RELEASE_GPG_RSA_KEY_PRIVATE }}
+          RELEASE_GPG_RSA_KEY_ID: ${{ secrets.RELEASE_GPG_RSA_KEY_ID }}
+          RELEASE_GPG_PASSPHRASE: ${{ secrets.RELEASE_GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
+
+          if [ -z "${RELEASE_GPG_PASSPHRASE}" ]; then
+            echo "ERROR: RELEASE_GPG_PASSPHRASE is required for artifact signing" >&2
+            exit 1
+          fi
+
+          if [ -n "${RELEASE_GPG_ECC_KEY_PRIVATE}" ] && [ -n "${RELEASE_GPG_ECC_KEY_ID}" ]; then
+            signing_key="${RELEASE_GPG_ECC_KEY_ID}"
+            key_material="${RELEASE_GPG_ECC_KEY_PRIVATE}"
+          elif [ -n "${RELEASE_GPG_RSA_KEY_PRIVATE}" ] && [ -n "${RELEASE_GPG_RSA_KEY_ID}" ]; then
+            signing_key="${RELEASE_GPG_RSA_KEY_ID}"
+            key_material="${RELEASE_GPG_RSA_KEY_PRIVATE}"
+          else
+            echo "ERROR: no release signing key configured in secrets" >&2
+            exit 1
+          fi
+
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "${tmp_dir}"' EXIT
+          export GNUPGHOME="${tmp_dir}/gnupg"
+          mkdir -p "${GNUPGHOME}"
+          chmod 700 "${GNUPGHOME}"
+          printf 'pinentry-mode loopback\n' > "${GNUPGHOME}/gpg.conf"
+          printf 'allow-loopback-pinentry\n' > "${GNUPGHOME}/gpg-agent.conf"
+
+          key_file="${tmp_dir}/release-signing-key.asc"
+          pass_file="${tmp_dir}/release-signing-passphrase.txt"
+          printf '%s' "${key_material}" >"${key_file}"
+          printf '%s' "${RELEASE_GPG_PASSPHRASE}" >"${pass_file}"
+          chmod 600 "${key_file}" "${pass_file}"
+
+          gpg --batch --yes --no-tty --pinentry-mode loopback \
+            --passphrase-file "${pass_file}" \
+            --import "${key_file}"
+
+          gpg --batch --yes --no-tty --pinentry-mode loopback \
+            --passphrase-file "${pass_file}" \
+            --local-user "${signing_key}" \
+            --armor --detach-sign \
+            --output salt-linux-amd64.tar.gz.asc \
+            salt-linux-amd64.tar.gz
+          gpg --batch --verify salt-linux-amd64.tar.gz.asc salt-linux-amd64.tar.gz
+
+          for artifact in salt_*_amd64.deb; do
+            debsigs --sign=origin --default-key="${signing_key}" "${artifact}"
+            if ! ar t "${artifact}" | grep -Eq '^_gpg(origin|maint|archive)$'; then
+              echo "ERROR: ${artifact} is missing an embedded Debian signature" >&2
+              exit 1
+            fi
+          done
+
           sha256sum \
             salt-linux-amd64.tar.gz \
+            salt-linux-amd64.tar.gz.asc \
             salt-linux-amd64.spdx.json \
             salt-static-linux-amd64.spdx.json \
             salt-linux-amd64.cyclonedx.json \
@@ -286,7 +395,29 @@ jobs:
             salt_*_amd64.deb \
             > SHA256SUMS
           sha256sum -c SHA256SUMS
-          echo "OK: SHA256SUMS verified"
+
+          gpg --batch --yes --no-tty --pinentry-mode loopback \
+            --passphrase-file "${pass_file}" \
+            --local-user "${signing_key}" \
+            --armor --detach-sign \
+            --output SHA256SUMS.asc \
+            SHA256SUMS
+          gpg --batch --verify SHA256SUMS.asc SHA256SUMS
+          ls -l salt-linux-amd64.tar.gz.asc salt_*_amd64.deb SHA256SUMS SHA256SUMS.asc
+
+      - name: Attest release artifacts
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: |
+            salt-linux-amd64.tar.gz
+            salt-linux-amd64.tar.gz.asc
+            salt-linux-amd64.spdx.json
+            salt-static-linux-amd64.spdx.json
+            salt-linux-amd64.cyclonedx.json
+            salt-static-linux-amd64.cyclonedx.json
+            salt_*_amd64.deb
+            SHA256SUMS
+            SHA256SUMS.asc
 
       - name: Extract changelog notes
         run: |
@@ -302,17 +433,19 @@ jobs:
           fi
 
       - name: Upload release bundle
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-bundle
           path: |
             salt-linux-amd64.tar.gz
+            salt-linux-amd64.tar.gz.asc
             salt-linux-amd64.spdx.json
             salt-static-linux-amd64.spdx.json
             salt-linux-amd64.cyclonedx.json
             salt-static-linux-amd64.cyclonedx.json
             salt_*_amd64.deb
             SHA256SUMS
+            SHA256SUMS.asc
             release-notes.md
           retention-days: 7
 
@@ -321,24 +454,29 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     needs: release-check
+    environment:
+      name: release
     permissions:
       contents: write
     steps:
       - name: Download release bundle
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: release-bundle
           path: release-bundle
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
+          draft: true
           files: |
             release-bundle/salt-linux-amd64.tar.gz
+            release-bundle/salt-linux-amd64.tar.gz.asc
             release-bundle/salt-linux-amd64.spdx.json
             release-bundle/salt-static-linux-amd64.spdx.json
             release-bundle/salt-linux-amd64.cyclonedx.json
             release-bundle/salt-static-linux-amd64.cyclonedx.json
             release-bundle/salt_*_amd64.deb
             release-bundle/SHA256SUMS
+            release-bundle/SHA256SUMS.asc
           body_path: release-bundle/release-notes.md
