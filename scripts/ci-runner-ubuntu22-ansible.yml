@@ -1,0 +1,38 @@
+---
+# Ansible vars for self-hosted GitHub Actions runners used by this repository.
+# These packages satisfy CI, release, and CodeQL workflow prerequisites on
+# Ubuntu 22.04 without requiring apt installs inside workflows.
+
+salt_ci_runner_apt_repositories:
+  - ppa:ubuntu-toolchain-r/test
+
+salt_ci_runner_apt_packages:
+  - autoconf
+  - automake
+  - libtool
+  - pkg-config
+  - build-essential
+  - gcc
+  - gcc-9
+  - gcc-10
+  - gcc-11
+  - gcc-12
+  - gcc-13
+  - clang-18
+  - clang-format-18
+  - clang-tidy-18
+  - clang-tools-18
+  - libsodium-dev
+  - libcmocka-dev
+  - cppcheck
+  - shellcheck
+  - codespell
+  - valgrind
+  - gcovr
+  - man-db
+  - binutils
+  - curl
+  - git
+  - jq
+  - python3
+  - python3-yaml
