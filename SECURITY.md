@@ -24,13 +24,13 @@ If Security Advisories are unavailable, contact maintainers privately through re
 - Initial acknowledgment target: within 48 hours
 - Triage and impact assessment: within 5 business days
 - Fix timeline: depends on severity and complexity
-  - **Critical** (remote code execution, credential leakage, authentication bypass): 
+  - **Critical** (remote code execution, credential leakage, authentication bypass):
     patch within 7 days when practical; emergency release if actively exploited
-  - **High** (privilege escalation, local secret exposure, cryptographic weakness): 
+  - **High** (privilege escalation, local secret exposure, cryptographic weakness):
     patch within 30 days
-  - **Medium** (information disclosure, denial of service): 
+  - **Medium** (information disclosure, denial of service):
     patch in next scheduled release or within 90 days
-  - **Low** (minor information leak, quality issue with security relevance): 
+  - **Low** (minor information leak, quality issue with security relevance):
     patch in next release cycle
 
 Timelines are targets, not guarantees. Complex fixes, dependency constraints, or
@@ -45,7 +45,9 @@ Use private GitHub Security Advisory reporting for this repository:
 
 This project enforces security and safety checks through Make-driven CI gates.
 `TESTING.md` is the source of truth for how those checks fit into the overall
-test plan.
+test plan. 
+
+The security strategy strongly aligns with **SEI CERT C Coding Standards**, specifically tracking the vulnerability mappings defined inside **CWE-1154** (Weaknesses Addressed by the SEI CERT C Coding Standard) and mitigating native memory bugs found in **CWE-658** (Weaknesses in Software Written in C), protecting heavily against boundaries (CWE-119/120), overflow maths (CWE-190/191), and dereferencing states (CWE-416/CWE-476).
 
 Aggregate gates:
 

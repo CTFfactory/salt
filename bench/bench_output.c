@@ -10,7 +10,7 @@
 
 #include "bench_cases.h"
 #include "bench_common.h"
-#include "../src/cli_output.h"
+#include "../src/cli/output.h"
 
 #include <stdio.h>
 #include <stdlib.h>

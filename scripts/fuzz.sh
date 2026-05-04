@@ -123,6 +123,10 @@ run_external_hook() {
 
     if [ "$rc" -ne 0 ]; then
         log "ERROR: $phase external corpus hook failed (rc=$rc)"
+        # RESTORE (pre-fuzz) hook failure is fatal: cannot proceed without seed corpus.
+        # SYNC (post-fuzz) hook failure is non-fatal: minimized corpus is preserved locally.
+        # Wrap this script with monitoring to distinguish pre-run vs post-run failures
+        # (e.g., exit code 10 for restore, 11 for sync).
         return "$rc"
     fi
 

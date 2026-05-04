@@ -61,11 +61,15 @@ int salt_cli_test_parse_key_input(const char *key_input, int key_format, char *k
                                   bool *has_key_id, char *error, size_t error_size);
 
 void salt_cli_test_set_interrupted(bool interrupted);
+void salt_cli_test_force_signal_handler_install_failure(int value);
 
 struct salt_cli_state;
 
 void salt_cli_test_state_init(struct salt_cli_state *state);
 void salt_cli_test_state_cleanup(struct salt_cli_state *state);
+
+int salt_cli_run_with_streams_signal_handlers(int argc, char **argv, FILE *in_stream,
+                                              FILE *out_stream, FILE *err_stream);
 #endif
 
 #endif

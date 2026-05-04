@@ -104,5 +104,5 @@ When adding new features:
 When updating README.md, ensure it stays consistent with:
 
 - Man page documentation
-- CLI flag and option definitions in the C source (`main.c`, `cli_parse.c`)
+- CLI flag and option definitions in the C source (`main.c`, `src/cli/parse.c`)
 - CHANGELOG.md entries
