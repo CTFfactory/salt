@@ -117,13 +117,16 @@ rule labels to annotate findings for downstream CVE triage:
 
 | Pattern | CWE | CERT C Rule |
 |---|---|---|
-| Length from input used in allocation without overflow guard | CWE-190, CWE-680 | INT30-C |
-| Destination capacity not validated before copy | CWE-119, CWE-125 | ARR38-C |
+| Length from input used in allocation without overflow guard | CWE-190, CWE-191, CWE-680 | INT30-C |
+| Destination capacity not validated before copy | CWE-119, CWE-120, CWE-125 | ARR38-C |
+| `malloc` / `calloc` / buffer capacity improperly calculated | CWE-131 | MEM35-C |
 | `malloc` / `calloc` return not null-checked | CWE-476 | MEM32-C |
 | Pointer dereferenced without null check | CWE-476 | EXP34-C |
 | Pointer used after `free` | CWE-416 | MEM30-C |
+| Use of uninitialized pointer | CWE-824 | EXP33-C |
 | Return value of fallible call ignored | CWE-252 | ERR33-C |
 | Sensitive buffer not zeroed on error exit path | CWE-14, CWE-312 | MEM03-C |
 
 This table reflects CWE-702 (implementation weaknesses) and CWE-658 (C language
-weakness space), aligned with the CERT C guidance in CWE-1154.
+weakness space including classic buffers CWE-119/120, integer faults CWE-190/191, and NULL derefs CWE-476), strictly aligned with the CERT C guidance in CWE-1154 (Weaknesses Addressed by the SEI CERT C Coding Standard).
+

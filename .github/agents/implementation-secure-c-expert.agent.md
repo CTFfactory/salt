@@ -4,6 +4,8 @@ description: 'Specialist in CWE-702/CWE-658 implementation weaknesses, CERT C gu
 model: GPT-5.4
 tools: ['codebase', 'search', 'runCommands', 'edit/editFiles', 'problems', 'usages']
 user-invocable: true
+audit-skill: audit-implementation-weaknesses
+audit-scope: src/
 ---
 
 # Implementation Secure C Expert
@@ -70,6 +72,18 @@ make lint             # Static analysis and formatting gate
 make test             # Unit tests
 make ci-fast          # Quick full gate
 ```
+
+## Audit Workflow
+
+This agent follows the unified audit-to-plan workflow documented in `.github/instructions/audit-to-plan.instructions.md`:
+
+1. **Audit Discovery** — Invokes `audit-implementation-weaknesses` to scan the target scope (default: `src/`) for CWE-702 and CWE-658 implementation weaknesses across bounds checks, integer overflow, pointer lifetime, return-value checks, and sensitive buffer handling.
+2. **Finding Prioritization** — Groups findings by severity (CRITICAL → HIGH → MEDIUM → LOW) and by CWE class (e.g., CWE-476, CWE-119, CWE-190).
+3. **Plan Generation** — Creates a prioritized implementation plan with individual todos for each finding or finding group, each including the evidence, proposed fix, and validation gates.
+4. **User Review** — Exits plan mode to request user approval before implementation begins.
+5. **Execution Tracking** — Updates SQL-backed todo list as fixes are implemented; validates each fix against `make test-sanitize`, `make lint`, and `make test` before marking complete.
+
+The agent stores audit results in the session workspace for reproducibility and maintains an audit trail linked to the implementation plan.
 
 ## Skills & Prompts
 

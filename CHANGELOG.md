@@ -14,7 +14,7 @@ When preparing a release:
 1. Rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` using the target version number and release date in ISO 8601 format.
 2. Add a new empty `## [Unreleased]` section immediately below the project header for future changes.
 3. Update comparison links at the bottom of this file to reference the new version tag.
-4. Verify all user-facing changes since the last release are documented under appropriate subsections (Added, Changed, Deprecated, Removed, Fixed, Security).
+4. Verify all user-facing changes since the last release are documented as a flat feature list (one bullet per capability, behavior, or guarantee) without Added/Changed-style subsections.
 
 ---
 
