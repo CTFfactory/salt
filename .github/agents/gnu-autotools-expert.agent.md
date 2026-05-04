@@ -1,6 +1,6 @@
 ---
-name: 'GNU Autotools Expert
-description: 'Specialist in Autoconf, Automake, bootstrap flows, and GNU Build System validation for this C/libsodium/cmocka project
+name: 'GNU Autotools Expert'
+description: 'Specialist in Autoconf, Automake, bootstrap flows, and GNU Build System validation for this C/libsodium/cmocka project'
 model: Claude Sonnet 4.6
 tools: ['codebase', 'search', 'runCommands', 'edit/editFiles', 'problems', 'usages', 'testFailure']
 user-invocable: true
@@ -9,7 +9,7 @@ audit-scope: .
 handoffs:
   - label: Align CI Gates
     agent: cicd-pipeline-architect
-    prompt: Verify CI workflow and Make targets remain aligned after Autotools or build-system changes.
+    prompt: 'Verify CI workflow and Make targets remain aligned after Autotools or build-system changes.'
 ---
 
 # GNU Autotools Expert

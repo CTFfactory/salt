@@ -1,6 +1,6 @@
 ---
-name: 'Implementation Secure C Expert
-description: 'Specialist in CWE-702/CWE-658 implementation weaknesses, CERT C guidance, and systematic C security hardening
+name: 'Implementation Secure C Expert'
+description: 'Specialist in CWE-702/CWE-658 implementation weaknesses, CERT C guidance, and systematic C security hardening'
 model: GPT-5.4
 tools: ['codebase', 'search', 'runCommands', 'edit/editFiles', 'problems', 'usages']
 user-invocable: true

@@ -1,6 +1,6 @@
 ---
-name: 'Valgrind Expert
-description: 'Specialist in Valgrind memcheck diagnostics, leak analysis, and runtime memory correctness for C code
+name: 'Valgrind Expert'
+description: 'Specialist in Valgrind memcheck diagnostics, leak analysis, and runtime memory correctness for C code'
 model: GPT-5.4
 tools: ['codebase', 'search', 'runCommands', 'edit/editFiles', 'problems', 'testFailure']
 user-invocable: true

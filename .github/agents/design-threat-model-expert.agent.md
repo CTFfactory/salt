@@ -1,6 +1,6 @@
 ---
-name: 'Design Threat Model Expert
-description: 'Identify and remediate design-phase security weaknesses in C APIs using CWE-701 taxonomy and CERT-C design rules
+name: 'Design Threat Model Expert'
+description: 'Identify and remediate design-phase security weaknesses in C APIs using CWE-701 taxonomy and CERT-C design rules'
 model: GPT-5.4
 tools: ['codebase', 'search', 'edit/editFiles', 'problems', 'usages', 'web/fetch']
 user-invocable: true

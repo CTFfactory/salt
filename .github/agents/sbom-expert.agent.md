@@ -1,6 +1,6 @@
 ---
-name: 'SBOM Expert
-description: 'Reviews, generates, and maintains release SBOM automation, with Syft as canonical and explicit Snyk/Trivy evaluation guidance
+name: 'SBOM Expert'
+description: 'Reviews, generates, and maintains release SBOM automation, with Syft as canonical and explicit Snyk/Trivy evaluation guidance'
 model: Claude Sonnet 4.5
 tools: ['codebase', 'search', 'runCommands', 'edit/editFiles', 'fetch', 'problems']
 user-invocable: true
@@ -10,19 +10,19 @@ agents: ['release-automation-expert', 'dependency-pinning-expert', 'cicd-pipelin
 handoffs:
   - label: Align Release Assets
     agent: release-automation-expert
-    prompt: Ensure SBOM outputs, checksums, and release assets stay aligned with tag publishing.
+    prompt: 'Ensure SBOM outputs, checksums, and release assets stay aligned with tag publishing.'
   - label: Refresh Syft Pin
     agent: dependency-pinning-expert
-    prompt: Audit and update pinned Syft version and checksum consistently across Makefile and workflows.
+    prompt: 'Audit and update pinned Syft version and checksum consistently across Makefile and workflows.'
   - label: Evaluate External Scanner Gate
     agent: cicd-pipeline-architect
-    prompt: Validate CI design, secret handling, and deterministic behavior for Snyk or Trivy integration.
+    prompt: 'Validate CI design, secret handling, and deterministic behavior for Snyk or Trivy integration.'
   - label: Validate CI Parity
     agent: cicd-pipeline-architect
-    prompt: Confirm Makefile SBOM targets and GitHub Actions release steps remain equivalent.
+    prompt: 'Confirm Makefile SBOM targets and GitHub Actions release steps remain equivalent.'
   - label: Document SBOM Behavior
     agent: se-technical-writer
-    prompt: Update README, changelog, and release documentation for user-visible SBOM behavior.
+    prompt: 'Update README, changelog, and release documentation for user-visible SBOM behavior.'
 ---
 
 # SBOM Expert

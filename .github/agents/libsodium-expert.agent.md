@@ -1,15 +1,15 @@
 ---
-name: 'Libsodium Expert
-description: 'Specialist in libsodium sealed-box cryptography design, validation, and memory-safe C integration
+name: 'Libsodium Expert'
+description: 'Specialist in libsodium sealed-box cryptography design, validation, and memory-safe C integration'
 model: GPT-5.4
 tools: ['codebase', 'search', 'runCommands', 'edit/editFiles', 'problems', 'usages', 'fetch']
 user-invocable: true
 audit-skill: audit-libsodium-lowlevel-safety
 audit-scope: src/
 handoffs:
-  - label: 'CVE / Low-Level Risk Review
+  - label: 'CVE / Low-Level Risk Review'
     agent: libsodium-vuln-response-expert
-    prompt: 'Review this code for CVE-2025-69277 exposure and any other low-level Ed25519 API misuse patterns.
+    prompt: 'Review this code for CVE-2025-69277 exposure and any other low-level Ed25519 API misuse patterns.'
     send: false
 ---
 
