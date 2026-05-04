@@ -35,14 +35,21 @@ struct bench_result {
     uint64_t ns_max;
     double ns_mean;
     double ns_stddev;
+    /* Multi-run statistics (if multi_run > 1) */
+    double ns_median_ci_lower;     /* Lower bound of confidence interval */
+    double ns_median_ci_upper;     /* Upper bound of confidence interval */
 };
 
 struct bench_options {
-    const char *filter;    /* substring filter, NULL or "" matches all */
-    const char *json_path; /* if non-NULL, append line-delimited JSON */
-    int text;              /* nonzero = human text output to stdout */
-    size_t iterations;     /* 0 = use case default */
-    size_t warmup;         /* SIZE_MAX = use case default */
+    const char *filter;           /* substring filter, NULL or "" matches all */
+    const char *json_path;        /* if non-NULL, append line-delimited JSON */
+    int text;                     /* nonzero = human text output to stdout */
+    size_t iterations;            /* 0 = use case default */
+    size_t warmup;                /* SIZE_MAX = use case default */
+    size_t max_runtime_ms;        /* 0 = no limit; milliseconds */
+    int outlier_detection;        /* nonzero = report outliers (>2σ) to stderr */
+    size_t multi_run;             /* 0 = single run; >1 = run N times for CI */
+    int confidence_level;         /* 90, 95, 99; default 95 (only if multi_run > 1) */
 };
 
 uint64_t bench_now_ns(void);
@@ -52,6 +59,7 @@ int bench_parse_size_arg(const char *value, const char *flag, const char *tool_n
 
 /*
  * Run a single case honoring overrides in opts (iterations/warmup).
+ * If opts->multi_run > 1, runs multiple times and computes confidence intervals.
  * Returns 0 on success, nonzero if the case function returned nonzero.
  * On success, populates *result.
  */
@@ -61,6 +69,10 @@ int bench_run_case(const struct bench_case *bc, const struct bench_options *opts
 /* Emitters: text to stdout, JSON appended (line-delimited) to json_path. */
 void bench_emit_text(const struct bench_result *result);
 int bench_emit_json(const char *path, const struct bench_result *result);
+
+/* Report outliers to stderr if requested (samples >2σ from mean). */
+void bench_report_outliers(const struct bench_result *result, const uint64_t *samples,
+                          size_t iterations);
 
 /*
  * Run a list of cases through the harness, applying filter and emitters

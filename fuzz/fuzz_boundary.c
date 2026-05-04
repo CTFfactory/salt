@@ -19,7 +19,7 @@
  */
 
 #include "salt.h"
-#include "salt_cli_internal.h"
+#include "../src/cli/internal.h"
 #include "fuzz_common.h"
 
 #include <sodium.h>

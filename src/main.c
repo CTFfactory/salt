@@ -8,22 +8,24 @@
  * - usage/version rendering
  * - salt_cli_run* orchestration
  *
- * Other helper logic lives in dedicated modules (src/cli_args.c, src/cli_input.c,
- * src/cli_prepare.c, src/cli_test_hooks.c, src/cli_state.c, src/cli_signal.c,
- * src/cli_stream.c, src/cli_parse.c, src/cli_output.c).
+ * Other helper logic lives in dedicated modules (src/cli/args.c,
+ * src/cli/input.c, src/cli/prepare.c, src/cli/test_hooks.c,
+ * src/cli/state.c, src/cli/signal.c, src/cli/stream.c,
+ * src/cli/parse.c, src/cli/output.c).
  */
 
-#include "cli_args.h"
-#include "cli_input.h"
-#include "cli_output.h"
-#include "cli_prepare.h"
-#include "cli_signal.h"
-#include "cli_state.h"
-#include "cli_stream.h"
+#include "cli/args.h"
+#include "cli/input.h"
+#include "cli/output.h"
+#include "cli/prepare.h"
+#include "cli/signals.h"
+#include "cli/state.h"
+#include "cli/stream.h"
 #include "salt.h"
 
 #include <sodium.h>
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <sys/resource.h>
 #ifdef __linux__
@@ -31,6 +33,22 @@
 #endif
 
 static const size_t SALT_CLI_STACK_WIPE_BYTES = 8192U;
+
+static bool salt_cli_has_valid_argv_shape(int argc, char **argv) {
+    int i;
+
+    if (argc <= 0 || argv == NULL || argv[0] == NULL || argv[0][0] == '\0') {
+        return false;
+    }
+
+    for (i = 0; i < argc; ++i) {
+        if (argv[i] == NULL) {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 static int print_usage(FILE *stream, const char *program, char *error, size_t error_size) {
     return salt_cli_write_stream(
@@ -68,18 +86,31 @@ static int print_version(FILE *stream, char *error, size_t error_size) {
                                  "salt %s\n", SALT_VERSION);
 }
 
-int salt_cli_run_with_streams(int argc, char **argv, FILE *in_stream, FILE *out_stream,
-                              FILE *err_stream) {
+static int salt_cli_run_with_streams_internal(int argc, char **argv, FILE *in_stream,
+                                              FILE *out_stream, FILE *err_stream,
+                                              bool manage_signals) {
     struct salt_cli_state state;
     int rc = SALT_ERR_INPUT;
 
-    if (argc <= 0 || argv == NULL || in_stream == NULL || out_stream == NULL ||
+    if (!salt_cli_has_valid_argv_shape(argc, argv) || in_stream == NULL || out_stream == NULL ||
         err_stream == NULL) {
         return SALT_ERR_INPUT;
     }
 
     salt_cli_state_init(&state);
-    salt_cli_ensure_signal_handlers();
+
+    if (manage_signals) {
+        rc = salt_cli_ensure_signal_handlers();
+        if (rc != SALT_OK) {
+            rc = salt_cli_set_error(state.error, sizeof(state.error),
+                                    "failed to install signal handlers", SALT_ERR_INTERNAL);
+            if (salt_cli_write_stream(err_stream, NULL, 0U, "failed to write diagnostic",
+                                      "error: %s\n", state.error) != SALT_OK) {
+                rc = SALT_ERR_IO;
+            }
+            goto cleanup;
+        }
+    }
     salt_cli_reset_interrupted();
 
     rc = salt_cli_args_parse_arguments(argc, argv, out_stream, err_stream, &state, print_usage,
@@ -117,6 +148,9 @@ int salt_cli_run_with_streams(int argc, char **argv, FILE *in_stream, FILE *out_
     }
 
 cleanup:
+    if (manage_signals) {
+        salt_cli_restore_signal_handlers();
+    }
     salt_cli_state_cleanup(&state);
     /*
      * Wipe stack space used by callees (parsers, libsodium primitives,
@@ -128,8 +162,13 @@ cleanup:
     return rc;
 }
 
+int salt_cli_run_with_streams(int argc, char **argv, FILE *in_stream, FILE *out_stream,
+                              FILE *err_stream) {
+    return salt_cli_run_with_streams_internal(argc, argv, in_stream, out_stream, err_stream, false);
+}
+
 int salt_cli_run(int argc, char **argv, FILE *out_stream, FILE *err_stream) {
-    return salt_cli_run_with_streams(argc, argv, stdin, out_stream, err_stream);
+    return salt_cli_run_with_streams_internal(argc, argv, stdin, out_stream, err_stream, false);
 }
 
 #ifndef SALT_NO_MAIN
@@ -137,18 +176,30 @@ int main(int argc, char **argv) {
     /*
      * Disable core dumps and ptrace attach so plaintext, decoded keys, and
      * other transient secrets cannot be extracted from a core file or by an
-     * attaching debugger sharing this UID. Both calls are best-effort: a
-     * lower setrlimit may already have been imposed by the parent, and
-     * PR_SET_DUMPABLE is Linux-specific. Library callers that link against
-     * salt without using main() are responsible for their own hardening.
+     * attaching debugger sharing this UID. Hardening setup failures are fatal:
+     * returning a success-shaped process without these controls would weaken
+     * the CLI's security contract for secret material handling.
+     * Library callers that link against salt without using main() are
+     * responsible for their own equivalent hardening.
      */
     {
         struct rlimit no_core = {0, 0};
-        (void)setrlimit(RLIMIT_CORE, &no_core);
+        if (setrlimit(RLIMIT_CORE, &no_core) != 0) {
+            (void)fputs("error: failed to disable core dumps\n", stderr);
+            return SALT_ERR_INTERNAL;
+        }
     }
 #ifdef PR_SET_DUMPABLE
-    (void)prctl(PR_SET_DUMPABLE, 0, 0, 0, 0);
+    if (prctl(PR_SET_DUMPABLE, 0, 0, 0, 0) != 0) {
+        (void)fputs("error: failed to disable process dumpability\n", stderr);
+        return SALT_ERR_INTERNAL;
+    }
 #endif
-    return salt_cli_run(argc, argv, stdout, stderr);
+    return salt_cli_run_with_streams_internal(argc, argv, stdin, stdout, stderr, true);
+}
+#else
+int salt_cli_run_with_streams_signal_handlers(int argc, char **argv, FILE *in_stream,
+                                              FILE *out_stream, FILE *err_stream) {
+    return salt_cli_run_with_streams_internal(argc, argv, in_stream, out_stream, err_stream, true);
 }
 #endif
