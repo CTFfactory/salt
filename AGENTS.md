@@ -158,13 +158,13 @@ make test-docker
 ## Architecture Notes
 
 - `src/salt.c` owns the sealed-box encryption wrapper and base64 output logic.
-- `src/cli_parse.c` owns key parsing and strict JSON-key-object handling.
-- `src/cli_output.c` owns output serialization (text and JSON modes) with UTF-8
+- `src/cli/parse.c` owns key parsing and strict JSON-key-object handling.
+- `src/cli/output.c` owns output serialization (text and JSON modes) with UTF-8
   validation to ensure RFC 8259 compliant JSON output.
 - `src/main.c` owns option parsing, stdin/argv handling, and production
   hardening such as core-dump suppression and argv scrubbing.
 - `include/salt.h` is the public API surface; internal CLI helpers live in
-  `src/salt_cli_internal.h` and `src/cli_output.h`.
+  `src/cli/internal.h` and `src/cli/output.h`.
 - `tests/` covers library, CLI, and production-`main()` behavior.
 - `fuzz/` includes five harnesses: parse, cli, output, boundary, and roundtrip.
 - `examples/` must stay aligned with the GitHub Actions secrets guidance in
@@ -175,7 +175,67 @@ make test-docker
 
 ---
 
-## CI/CD
+## Audit-to-Plan Workflow
+
+Many specialist agents in this repository have corresponding audit skills that systematically scan their domain for weaknesses, issues, or configuration gaps. These agents follow a unified **audit-to-plan workflow** when invoked:
+
+### Workflow Stages
+
+1. **Audit Discovery** — Agent invokes its domain audit skill (e.g., `audit-implementation-weaknesses` for Implementation Secure C Expert).
+2. **Finding Prioritization** — Findings are grouped by severity (CRITICAL → HIGH → MEDIUM → LOW) and by root cause or category.
+3. **Plan Generation** — Agent creates a structured implementation plan with prioritized todos, each including:
+   - Finding reference (CWE ID, file, line)
+   - Proposed fix or remediation
+   - Validation gates (exact make commands to run)
+   - Expected outcome
+4. **User Review** — Agent exits plan mode to show audit results and plan for user approval before implementation begins.
+5. **Execution Tracking** — Agent maintains SQL-backed todos with dependencies; updates todo status as work progresses.
+
+### Agents with Audit Capabilities
+
+The following agents have audit skills and follow this workflow:
+
+| Agent | Audit Skill | Scope | Domain |
+|---|---|---|---|
+| Implementation Secure C Expert | `audit-implementation-weaknesses` | `src/` | CWE-702/658 implementation weaknesses |
+| Design Threat Model Expert | `audit-design-weaknesses` | `include/` | CWE-701 API design flaws |
+| SBOM Expert | `audit-sbom` | `.` | Release SBOM metadata parity |
+| GNU Autotools Expert | `audit-gnu-autotools` | `.` | GNU Autotools portability and CI parity |
+| Libsodium Expert | `audit-libsodium-lowlevel-safety` | `src/` | Low-level Ed25519 API misuse (CVE-2025-69277) |
+| Valgrind Expert | `audit-c-memory-safety` | `src/` | Memory-safety and leak patterns |
+
+### Audit Result Storage
+
+All audit results are stored in a standardized JSON format defined by `.github/schemas/audit-report.schema.json`. The format includes:
+- Agent name and skill name
+- ISO 8601 timestamp
+- Audit scope (file, directory, or module)
+- Findings array with severity, CWE/rule, file/line, evidence, proposed fix, and validation gates
+- Summary statistics (count by severity)
+
+### Implementation Example
+
+When invoking the **Implementation Secure C Expert** to address a concern about null-pointer checks in `src/cli/parse.c`:
+
+```bash
+# User request: "audit memory safety in src/cli/parse.c"
+#
+# Agent response (5-phase flow):
+# 1. Audit runs: audit-implementation-weaknesses on src/cli/parse.c
+# 2. Findings prioritized: HIGH-severity null-check finding at line 42
+# 3. Plan generated: 1 todo "cwe-476-parse-malloc-null-check" with fix steps
+# 4. Plan shown for approval: user sees finding + todo list
+# 5. After approval: agent implements fix, validates with make test-sanitize
+```
+
+### Related Documentation
+
+- **Workflow details:** `.github/instructions/audit-to-plan.instructions.md`
+- **Audit result schema:** `.github/schemas/audit-report.schema.json`
+- **Routing guide:** `.github/copilot-instructions.md`
+- **Individual audit skills:** `.github/skills/audit-*/SKILL.md`
+
+---
 
 - `.github/workflows/ci.yml` runs the Copilot config gate, fast gate, GCC
   matrix, clang gate, full gate, bench gate, and fuzz smoke jobs.

@@ -4,10 +4,10 @@
  * CLI runtime hook state and SALT_NO_MAIN test-hook implementation.
  */
 
-#include "cli_test_hooks.h"
+#include "test_hooks.h"
 
-#include "cli_signal.h"
-#include "salt_cli_internal.h"
+#include "signals.h"
+#include "internal.h"
 
 #include <stdlib.h>
 

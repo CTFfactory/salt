@@ -4,7 +4,7 @@
  * libFuzzer harness for key-input parsing and strict JSON key-object handling.
  */
 
-#include "salt_cli_internal.h"
+#include "cli/internal.h"
 #include "fuzz_common.h"
 
 #include <sodium.h>

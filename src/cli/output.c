@@ -7,7 +7,7 @@
  * and UTF-8 validation to ensure the emitted JSON is RFC 8259 compliant.
  */
 
-#include "cli_output.h"
+#include "output.h"
 #include "salt.h"
 
 #include <stdarg.h>

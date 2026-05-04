@@ -24,13 +24,13 @@ If Security Advisories are unavailable, contact maintainers privately through re
 - Initial acknowledgment target: within 48 hours
 - Triage and impact assessment: within 5 business days
 - Fix timeline: depends on severity and complexity
-  - **Critical** (remote code execution, credential leakage, authentication bypass): 
+  - **Critical** (remote code execution, credential leakage, authentication bypass):
     patch within 7 days when practical; emergency release if actively exploited
-  - **High** (privilege escalation, local secret exposure, cryptographic weakness): 
+  - **High** (privilege escalation, local secret exposure, cryptographic weakness):
     patch within 30 days
-  - **Medium** (information disclosure, denial of service): 
+  - **Medium** (information disclosure, denial of service):
     patch in next scheduled release or within 90 days
-  - **Low** (minor information leak, quality issue with security relevance): 
+  - **Low** (minor information leak, quality issue with security relevance):
     patch in next release cycle
 
 Timelines are targets, not guarantees. Complex fixes, dependency constraints, or

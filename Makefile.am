@@ -4,33 +4,33 @@ ACLOCAL_AMFLAGS = -I m4
 # Source Lists
 # ============================================================================
 
-SALT_SRCS = src/main.c src/cli_args.c src/cli_input.c src/cli_prepare.c src/cli_test_hooks.c src/cli_parse.c src/cli_output.c src/cli_state.c src/cli_signal.c src/cli_stream.c src/salt.c
-SALT_SRC_FILES = $(top_srcdir)/src/main.c $(top_srcdir)/src/cli_args.c \
-$(top_srcdir)/src/cli_input.c $(top_srcdir)/src/cli_prepare.c \
-$(top_srcdir)/src/cli_test_hooks.c $(top_srcdir)/src/cli_parse.c \
-$(top_srcdir)/src/cli_output.c $(top_srcdir)/src/cli_state.c \
-$(top_srcdir)/src/cli_signal.c $(top_srcdir)/src/cli_stream.c \
+SALT_SRCS = src/main.c src/cli/args.c src/cli/input.c src/cli/prepare.c src/cli/test_hooks.c src/cli/parse.c src/cli/output.c src/cli/state.c src/cli/signal.c src/cli/stream.c src/salt.c
+SALT_SRC_FILES = $(top_srcdir)/src/main.c $(top_srcdir)/src/cli/args.c \
+$(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c \
+$(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/parse.c \
+$(top_srcdir)/src/cli/output.c $(top_srcdir)/src/cli/state.c \
+$(top_srcdir)/src/cli/signal.c $(top_srcdir)/src/cli/stream.c \
 $(top_srcdir)/src/salt.c
 TEST_SRCS = tests/test_main.c tests/test_salt.c \
-tests/test_cli_support.c tests/test_cli_contract.c \
-tests/test_cli_io.c tests/test_cli_json.c \
-tests/test_cli_runtime.c tests/test_cli_helpers.c \
-tests/test_cli_characterization.c tests/test_fuzz_regressions.c \
-src/salt.c src/cli_args.c src/cli_input.c src/cli_prepare.c src/cli_test_hooks.c src/cli_parse.c src/cli_output.c src/cli_state.c src/cli_signal.c src/cli_stream.c src/main.c
-AUDIT_SRC_FILES = $(top_srcdir)/src/main.c $(top_srcdir)/src/cli_parse.c \
-$(top_srcdir)/src/cli_args.c $(top_srcdir)/src/cli_input.c $(top_srcdir)/src/cli_prepare.c $(top_srcdir)/src/cli_test_hooks.c $(top_srcdir)/src/cli_output.c $(top_srcdir)/src/cli_state.c $(top_srcdir)/src/cli_signal.c \
-$(top_srcdir)/src/cli_stream.c $(top_srcdir)/src/salt.c
+tests/cli/test_support.c tests/cli/test_contract.c \
+tests/cli/test_io.c tests/cli/test_json.c \
+tests/cli/test_runtime.c tests/cli/test_helpers.c \
+tests/cli/test_characterization.c tests/test_fuzz_regressions.c \
+src/salt.c src/cli/args.c src/cli/input.c src/cli/prepare.c src/cli/test_hooks.c src/cli/parse.c src/cli/output.c src/cli/state.c src/cli/signal.c src/cli/stream.c src/main.c
+AUDIT_SRC_FILES = $(top_srcdir)/src/main.c $(top_srcdir)/src/cli/parse.c \
+$(top_srcdir)/src/cli/args.c $(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/output.c $(top_srcdir)/src/cli/state.c $(top_srcdir)/src/cli/signal.c \
+$(top_srcdir)/src/cli/stream.c $(top_srcdir)/src/salt.c
 TEST_SRC_FILES = $(top_srcdir)/tests/test_main.c $(top_srcdir)/tests/test_salt.c \
-$(top_srcdir)/tests/test_cli_support.c $(top_srcdir)/tests/test_cli_contract.c \
-$(top_srcdir)/tests/test_cli_io.c $(top_srcdir)/tests/test_cli_json.c \
-$(top_srcdir)/tests/test_cli_runtime.c $(top_srcdir)/tests/test_cli_helpers.c \
-$(top_srcdir)/tests/test_cli_characterization.c $(top_srcdir)/tests/test_fuzz_regressions.c \
-$(top_srcdir)/src/salt.c $(top_srcdir)/src/cli_args.c $(top_srcdir)/src/cli_input.c $(top_srcdir)/src/cli_prepare.c $(top_srcdir)/src/cli_test_hooks.c $(top_srcdir)/src/cli_parse.c \
-$(top_srcdir)/src/cli_output.c $(top_srcdir)/src/cli_state.c $(top_srcdir)/src/cli_signal.c \
-$(top_srcdir)/src/cli_stream.c $(top_srcdir)/src/main.c
-TEST_HEADER_FILES = $(top_srcdir)/include/salt_cli_internal.h \
-$(top_srcdir)/src/salt_cli_internal.h $(top_srcdir)/src/cli_args.h $(top_srcdir)/src/cli_input.h $(top_srcdir)/src/cli_prepare.h $(top_srcdir)/src/cli_test_hooks.h $(top_srcdir)/src/cli_output.h \
-$(top_srcdir)/src/cli_state.h $(top_srcdir)/src/cli_signal.h $(top_srcdir)/src/cli_stream.h \
+$(top_srcdir)/tests/cli/test_support.c $(top_srcdir)/tests/cli/test_contract.c \
+$(top_srcdir)/tests/cli/test_io.c $(top_srcdir)/tests/cli/test_json.c \
+$(top_srcdir)/tests/cli/test_runtime.c $(top_srcdir)/tests/cli/test_helpers.c \
+$(top_srcdir)/tests/cli/test_characterization.c $(top_srcdir)/tests/test_fuzz_regressions.c \
+$(top_srcdir)/src/salt.c $(top_srcdir)/src/cli/args.c $(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/parse.c \
+$(top_srcdir)/src/cli/output.c $(top_srcdir)/src/cli/state.c $(top_srcdir)/src/cli/signal.c \
+$(top_srcdir)/src/cli/stream.c $(top_srcdir)/src/main.c
+TEST_HEADER_FILES = $(top_srcdir)/include/cli/internal.h \
+$(top_srcdir)/src/cli/internal.h $(top_srcdir)/src/cli/args.h $(top_srcdir)/src/cli/input.h $(top_srcdir)/src/cli/prepare.h $(top_srcdir)/src/cli/test_hooks.h $(top_srcdir)/src/cli/output.h \
+$(top_srcdir)/src/cli/state.h $(top_srcdir)/src/cli/signals.h $(top_srcdir)/src/cli/stream.h \
 $(top_srcdir)/src/salt_test_internal.h $(top_srcdir)/tests/test_suites.h \
 $(top_srcdir)/tests/test_cli_shared.h $(top_srcdir)/include/salt.h
 
@@ -44,8 +44,8 @@ man_MANS = man/salt.1
 
 EXTRA_DIST = bootstrap
 
-noinst_HEADERS = include/salt_cli_internal.h src/salt_cli_internal.h src/cli_args.h src/cli_input.h src/cli_prepare.h src/cli_test_hooks.h \
-src/cli_output.h src/salt_test_internal.h \
+noinst_HEADERS = include/cli/internal.h src/cli/internal.h src/cli/args.h src/cli/input.h src/cli/prepare.h src/cli/test_hooks.h \
+src/cli/output.h src/salt_test_internal.h \
 tests/test_suites.h tests/test_cli_shared.h
 
 AM_CPPFLAGS = -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" \
@@ -82,7 +82,15 @@ tests/test_salt-%.o: tests/%.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_salt_CPPFLAGS) $(CPPFLAGS) \
 	$(test_salt_CFLAGS) $(CFLAGS) -c -o $@ $<
 
+tests/cli/test_salt-%.o: tests/cli/%.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_salt_CPPFLAGS) $(CPPFLAGS) \
+	$(test_salt_CFLAGS) $(CFLAGS) -c -o $@ $<
+
 src/test_salt-%.o: src/%.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_salt_CPPFLAGS) $(CPPFLAGS) \
+	$(test_salt_CFLAGS) $(CFLAGS) -c -o $@ $<
+
+src/cli/test_salt-%.o: src/cli/%.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_salt_CPPFLAGS) $(CPPFLAGS) \
 	$(test_salt_CFLAGS) $(CFLAGS) -c -o $@ $<
 endif
@@ -155,7 +163,7 @@ BENCH_CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -O3 -DNDEBUG \
 BENCH_SRC := $(top_srcdir)/bench/bench_main.c $(top_srcdir)/bench/bench_common.c \
               $(top_srcdir)/bench/bench_seal.c $(top_srcdir)/bench/bench_base64.c \
               $(top_srcdir)/bench/bench_parse.c $(top_srcdir)/bench/bench_output.c \
-              $(top_srcdir)/src/salt.c $(top_srcdir)/src/cli_parse.c $(top_srcdir)/src/cli_output.c
+              $(top_srcdir)/src/salt.c $(top_srcdir)/src/cli/parse.c $(top_srcdir)/src/cli/output.c
 BENCH_SPAWN_SRC := $(top_srcdir)/bench/bench_spawn.c $(top_srcdir)/bench/bench_common.c
 
 # Linting tools
@@ -166,17 +174,17 @@ CPPCHECK ?= cppcheck
 SHELLCHECK ?= shellcheck
 CODESPELL ?= codespell
 CODESPELL_ARGS ?= --check-filenames --quiet-level=2 --ignore-words-list=bu,crasher,crashers --skip=build,bin,.git,fuzz/corpus,terraform,autom4te.cache,build-aux
-FORMAT_SRCS := $(top_srcdir)/src/main.c $(top_srcdir)/src/cli_args.c $(top_srcdir)/src/cli_input.c $(top_srcdir)/src/cli_prepare.c $(top_srcdir)/src/cli_test_hooks.c $(top_srcdir)/src/cli_parse.c $(top_srcdir)/src/cli_output.c \
-               $(top_srcdir)/src/cli_state.c $(top_srcdir)/src/cli_signal.c $(top_srcdir)/src/cli_stream.c \
-               $(top_srcdir)/src/salt.c $(top_srcdir)/src/cli_args.h $(top_srcdir)/src/cli_input.h $(top_srcdir)/src/cli_prepare.h $(top_srcdir)/src/cli_test_hooks.h $(top_srcdir)/src/salt_test_internal.h \
-               $(top_srcdir)/include/salt.h $(top_srcdir)/include/salt_cli_internal.h \
+FORMAT_SRCS := $(top_srcdir)/src/main.c $(top_srcdir)/src/cli/args.c $(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/parse.c $(top_srcdir)/src/cli/output.c \
+               $(top_srcdir)/src/cli/state.c $(top_srcdir)/src/cli/signal.c $(top_srcdir)/src/cli/stream.c \
+               $(top_srcdir)/src/salt.c $(top_srcdir)/src/cli/args.h $(top_srcdir)/src/cli/input.h $(top_srcdir)/src/cli/prepare.h $(top_srcdir)/src/cli/test_hooks.h $(top_srcdir)/src/salt_test_internal.h \
+               $(top_srcdir)/include/salt.h $(top_srcdir)/include/cli/internal.h \
                $(top_srcdir)/fuzz/fuzz_common.h \
                $(top_srcdir)/tests/test_salt.c $(top_srcdir)/tests/test_main.c \
                $(top_srcdir)/tests/test_suites.h \
-               $(top_srcdir)/tests/test_cli_support.c $(top_srcdir)/tests/test_cli_contract.c \
-               $(top_srcdir)/tests/test_cli_io.c $(top_srcdir)/tests/test_cli_json.c \
-               $(top_srcdir)/tests/test_cli_runtime.c $(top_srcdir)/tests/test_cli_helpers.c \
-               $(top_srcdir)/tests/test_cli_characterization.c $(top_srcdir)/tests/test_fuzz_regressions.c \
+               $(top_srcdir)/tests/cli/test_support.c $(top_srcdir)/tests/cli/test_contract.c \
+               $(top_srcdir)/tests/cli/test_io.c $(top_srcdir)/tests/cli/test_json.c \
+               $(top_srcdir)/tests/cli/test_runtime.c $(top_srcdir)/tests/cli/test_helpers.c \
+               $(top_srcdir)/tests/cli/test_characterization.c $(top_srcdir)/tests/test_fuzz_regressions.c \
                $(top_srcdir)/tests/test_cli_shared.h \
                $(top_srcdir)/fuzz/fuzz_parse.c $(top_srcdir)/fuzz/fuzz_cli.c \
                $(top_srcdir)/fuzz/fuzz_output.c $(top_srcdir)/fuzz/fuzz_boundary.c \
@@ -436,30 +444,30 @@ $(COV_BIN): $(TEST_SRC_FILES) $(TEST_HEADER_FILES)
 	rm -f *.gcda *.gcno *.gcov
 	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/test_main.c -o test_main_cov.o
 	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/salt.c -o salt_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli_args.c -o cli_args_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli_input.c -o cli_input_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli_prepare.c -o cli_prepare_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli_test_hooks.c -o cli_test_hooks_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli_parse.c -o cli_parse_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli_output.c -o cli_output_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli_state.c -o cli_state_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli_signal.c -o cli_signal_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli_stream.c -o cli_stream_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli/args.c -o cli_args_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli/input.c -o cli_input_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli/prepare.c -o cli_prepare_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli/test_hooks.c -o cli_test_hooks_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli/parse.c -o cli_parse_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli/output.c -o cli_output_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli/state.c -o cli_state_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli/signal.c -o cli_signal_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/cli/stream.c -o cli_stream_cov.o
 	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/src/main.c -o main_cov.o
 	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/test_salt.c -o test_salt_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/test_cli_support.c -o test_cli_support_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/test_cli_contract.c -o test_cli_contract_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/test_cli_io.c -o test_cli_io_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/test_cli_json.c -o test_cli_json_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/test_cli_runtime.c -o test_cli_runtime_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/test_cli_helpers.c -o test_cli_helpers_cov.o
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/test_cli_characterization.c -o test_cli_characterization_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/cli/test_support.c -o support_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/cli/test_contract.c -o contract_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/cli/test_io.c -o io_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/cli/test_json.c -o json_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/cli/test_runtime.c -o runtime_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/cli/test_helpers.c -o helpers_cov.o
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/cli/test_characterization.c -o characterization_cov.o
 	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" $(CMOCKA_CFLAGS) $(COV_FLAGS) -DSALT_NO_MAIN -c $(top_srcdir)/tests/test_fuzz_regressions.c -o test_fuzz_regressions_cov.o
 	$(CC) $(COV_FLAGS) test_main_cov.o test_salt_cov.o \
-	                   test_cli_support_cov.o test_cli_contract_cov.o \
-	                   test_cli_io_cov.o test_cli_json_cov.o \
-	                   test_cli_runtime_cov.o test_cli_helpers_cov.o \
-	                   test_cli_characterization_cov.o test_fuzz_regressions_cov.o \
+	                   support_cov.o contract_cov.o \
+	                   io_cov.o json_cov.o \
+	                   runtime_cov.o helpers_cov.o \
+	                   characterization_cov.o test_fuzz_regressions_cov.o \
 	                   salt_cov.o cli_args_cov.o cli_input_cov.o cli_prepare_cov.o cli_test_hooks_cov.o cli_parse_cov.o \
 	                   cli_state_cov.o cli_signal_cov.o cli_stream_cov.o \
 	                   cli_output_cov.o main_cov.o -o $@ $(LDFLAGS) $(CMOCKA_LIBS) $(SODIUM_LIBS)
@@ -471,33 +479,33 @@ $(COV_BIN): $(TEST_SRC_FILES) $(TEST_HEADER_FILES)
 .PHONY: fuzz-build
 fuzz-build: $(FUZZ_PARSE_BIN) $(FUZZ_CLI_BIN) $(FUZZ_OUTPUT_BIN) $(FUZZ_BOUNDARY_BIN) $(FUZZ_ROUNDTRIP_BIN)
 
-$(FUZZ_PARSE_BIN): $(top_srcdir)/fuzz/fuzz_parse.c $(top_srcdir)/fuzz/fuzz_common.h $(top_srcdir)/src/cli_parse.c $(top_srcdir)/src/salt.c $(top_srcdir)/include/salt.h $(top_srcdir)/include/salt_cli_internal.h
+$(FUZZ_PARSE_BIN): $(top_srcdir)/fuzz/fuzz_parse.c $(top_srcdir)/fuzz/fuzz_common.h $(top_srcdir)/src/cli/parse.c $(top_srcdir)/src/salt.c $(top_srcdir)/include/salt.h $(top_srcdir)/include/cli/internal.h
 	$(FUZZ_CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include $(FUZZ_FLAGS) \
-	$(top_srcdir)/fuzz/fuzz_parse.c $(top_srcdir)/src/cli_parse.c $(top_srcdir)/src/salt.c \
+	$(top_srcdir)/fuzz/fuzz_parse.c $(top_srcdir)/src/cli/parse.c $(top_srcdir)/src/salt.c \
 	-o $@ $(LDFLAGS) $(SODIUM_LIBS)
 
-$(FUZZ_CLI_BIN): $(top_srcdir)/fuzz/fuzz_cli.c $(top_srcdir)/fuzz/fuzz_common.h $(top_srcdir)/src/main.c $(top_srcdir)/src/cli_args.c $(top_srcdir)/src/cli_input.c $(top_srcdir)/src/cli_prepare.c $(top_srcdir)/src/cli_test_hooks.c $(top_srcdir)/src/cli_parse.c $(top_srcdir)/src/cli_output.c $(top_srcdir)/src/cli_state.c $(top_srcdir)/src/cli_signal.c $(top_srcdir)/src/cli_stream.c $(top_srcdir)/src/salt.c
+$(FUZZ_CLI_BIN): $(top_srcdir)/fuzz/fuzz_cli.c $(top_srcdir)/fuzz/fuzz_common.h $(top_srcdir)/src/main.c $(top_srcdir)/src/cli/args.c $(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/parse.c $(top_srcdir)/src/cli/output.c $(top_srcdir)/src/cli/state.c $(top_srcdir)/src/cli/signal.c $(top_srcdir)/src/cli/stream.c $(top_srcdir)/src/salt.c
 	$(FUZZ_CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include $(FUZZ_FLAGS) -DSALT_NO_MAIN \
-	$(top_srcdir)/fuzz/fuzz_cli.c $(top_srcdir)/src/main.c $(top_srcdir)/src/cli_args.c $(top_srcdir)/src/cli_input.c $(top_srcdir)/src/cli_prepare.c $(top_srcdir)/src/cli_test_hooks.c $(top_srcdir)/src/cli_parse.c \
-	$(top_srcdir)/src/cli_output.c $(top_srcdir)/src/cli_state.c $(top_srcdir)/src/cli_signal.c \
-	$(top_srcdir)/src/cli_stream.c $(top_srcdir)/src/salt.c \
+	$(top_srcdir)/fuzz/fuzz_cli.c $(top_srcdir)/src/main.c $(top_srcdir)/src/cli/args.c $(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/parse.c \
+	$(top_srcdir)/src/cli/output.c $(top_srcdir)/src/cli/state.c $(top_srcdir)/src/cli/signal.c \
+	$(top_srcdir)/src/cli/stream.c $(top_srcdir)/src/salt.c \
 	-o $@ $(LDFLAGS) $(SODIUM_LIBS)
 
-$(FUZZ_OUTPUT_BIN): $(top_srcdir)/fuzz/fuzz_output.c $(top_srcdir)/fuzz/fuzz_common.h $(top_srcdir)/src/cli_output.c $(top_srcdir)/src/salt.c
+$(FUZZ_OUTPUT_BIN): $(top_srcdir)/fuzz/fuzz_output.c $(top_srcdir)/fuzz/fuzz_common.h $(top_srcdir)/src/cli/output.c $(top_srcdir)/src/salt.c
 	$(FUZZ_CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include $(FUZZ_FLAGS) \
-	$(top_srcdir)/fuzz/fuzz_output.c $(top_srcdir)/src/cli_output.c $(top_srcdir)/src/salt.c \
+	$(top_srcdir)/fuzz/fuzz_output.c $(top_srcdir)/src/cli/output.c $(top_srcdir)/src/salt.c \
 	-o $@ $(LDFLAGS) $(SODIUM_LIBS)
 
-$(FUZZ_BOUNDARY_BIN): $(top_srcdir)/fuzz/fuzz_boundary.c $(top_srcdir)/fuzz/fuzz_common.h $(top_srcdir)/src/main.c $(top_srcdir)/src/cli_args.c $(top_srcdir)/src/cli_input.c $(top_srcdir)/src/cli_prepare.c $(top_srcdir)/src/cli_test_hooks.c $(top_srcdir)/src/cli_parse.c $(top_srcdir)/src/cli_output.c $(top_srcdir)/src/cli_state.c $(top_srcdir)/src/cli_signal.c $(top_srcdir)/src/cli_stream.c $(top_srcdir)/src/salt.c
+$(FUZZ_BOUNDARY_BIN): $(top_srcdir)/fuzz/fuzz_boundary.c $(top_srcdir)/fuzz/fuzz_common.h $(top_srcdir)/src/main.c $(top_srcdir)/src/cli/args.c $(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/parse.c $(top_srcdir)/src/cli/output.c $(top_srcdir)/src/cli/state.c $(top_srcdir)/src/cli/signal.c $(top_srcdir)/src/cli/stream.c $(top_srcdir)/src/salt.c
 	$(FUZZ_CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include $(FUZZ_FLAGS) -DSALT_NO_MAIN \
-	$(top_srcdir)/fuzz/fuzz_boundary.c $(top_srcdir)/src/main.c $(top_srcdir)/src/cli_args.c $(top_srcdir)/src/cli_input.c $(top_srcdir)/src/cli_prepare.c $(top_srcdir)/src/cli_test_hooks.c $(top_srcdir)/src/cli_parse.c \
-	$(top_srcdir)/src/cli_output.c $(top_srcdir)/src/cli_state.c $(top_srcdir)/src/cli_signal.c \
-	$(top_srcdir)/src/cli_stream.c $(top_srcdir)/src/salt.c \
+	$(top_srcdir)/fuzz/fuzz_boundary.c $(top_srcdir)/src/main.c $(top_srcdir)/src/cli/args.c $(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/parse.c \
+	$(top_srcdir)/src/cli/output.c $(top_srcdir)/src/cli/state.c $(top_srcdir)/src/cli/signal.c \
+	$(top_srcdir)/src/cli/stream.c $(top_srcdir)/src/salt.c \
 	-o $@ $(LDFLAGS) $(SODIUM_LIBS)
 
-$(FUZZ_ROUNDTRIP_BIN): $(top_srcdir)/fuzz/fuzz_roundtrip.c $(top_srcdir)/fuzz/fuzz_common.h $(top_srcdir)/src/cli_parse.c $(top_srcdir)/src/salt.c
+$(FUZZ_ROUNDTRIP_BIN): $(top_srcdir)/fuzz/fuzz_roundtrip.c $(top_srcdir)/fuzz/fuzz_common.h $(top_srcdir)/src/cli/parse.c $(top_srcdir)/src/salt.c
 	$(FUZZ_CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include $(FUZZ_FLAGS) \
-	$(top_srcdir)/fuzz/fuzz_roundtrip.c $(top_srcdir)/src/cli_parse.c $(top_srcdir)/src/salt.c \
+	$(top_srcdir)/fuzz/fuzz_roundtrip.c $(top_srcdir)/src/cli/parse.c $(top_srcdir)/src/salt.c \
 	-o $@ $(LDFLAGS) $(SODIUM_LIBS)
 
 define run-fuzz
@@ -673,11 +681,11 @@ scan-build:
 	  -enable-checker deadcode \
 	  -enable-checker nullability \
 	  -disable-checker security.insecureAPI.DeprecatedOrUnsafeBufferHandling \
-	  $(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" -DSALT_NO_MAIN -fsyntax-only $(top_srcdir)/src/main.c $(top_srcdir)/src/cli_args.c $(top_srcdir)/src/cli_input.c $(top_srcdir)/src/cli_prepare.c $(top_srcdir)/src/cli_test_hooks.c $(top_srcdir)/src/cli_parse.c $(top_srcdir)/src/cli_output.c $(top_srcdir)/src/salt.c
+	  $(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" -DSALT_NO_MAIN -fsyntax-only $(top_srcdir)/src/main.c $(top_srcdir)/src/cli/args.c $(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/parse.c $(top_srcdir)/src/cli/output.c $(top_srcdir)/src/salt.c
 
 .PHONY: lint
 lint: tidy format cppcheck shellcheck codespell scan-build
-	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" -fsyntax-only $(top_srcdir)/src/main.c $(top_srcdir)/src/cli_args.c $(top_srcdir)/src/cli_input.c $(top_srcdir)/src/cli_prepare.c $(top_srcdir)/src/cli_test_hooks.c $(top_srcdir)/src/cli_parse.c $(top_srcdir)/src/cli_output.c $(top_srcdir)/src/salt.c
+	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" -fsyntax-only $(top_srcdir)/src/main.c $(top_srcdir)/src/cli/args.c $(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/parse.c $(top_srcdir)/src/cli/output.c $(top_srcdir)/src/salt.c
 	$(CC) $(BASE_CFLAGS) $(CPPFLAGS) -I$(top_srcdir)/include -DSALT_VERSION=\"$(SALT_VERSION)\" -DSALT_NO_MAIN -fsyntax-only $(top_srcdir)/tests/test_salt.c
 
 # ============================================================================

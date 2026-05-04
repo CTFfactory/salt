@@ -1,9 +1,11 @@
 ---
-name: 'SBOM Expert'
-description: 'Reviews, generates, and maintains release SBOM automation, with Syft as canonical and explicit Snyk/Trivy evaluation guidance'
+name: 'SBOM Expert
+description: 'Reviews, generates, and maintains release SBOM automation, with Syft as canonical and explicit Snyk/Trivy evaluation guidance
 model: Claude Sonnet 4.5
 tools: ['codebase', 'search', 'runCommands', 'edit/editFiles', 'fetch', 'problems']
 user-invocable: true
+audit-skill: audit-sbom
+audit-scope: .
 agents: ['release-automation-expert', 'dependency-pinning-expert', 'cicd-pipeline-architect', 'se-technical-writer']
 handoffs:
   - label: Align Release Assets
@@ -81,6 +83,18 @@ make codespell
 ```
 
 Use `make ci-fast` when SBOM changes also touch broader release or workflow behavior.
+
+## Audit Workflow
+
+This agent follows the unified audit-to-plan workflow documented in `.github/instructions/audit-to-plan.instructions.md`:
+
+1. **Audit Discovery** — Invokes `audit-sbom` and `audit-syft` to review release SBOM metadata (SPDX and CycloneDX JSON), Syft configuration, cataloger behavior, and parity between local `make sbom` output and release artifacts.
+2. **Finding Prioritization** — Groups findings by severity (CRITICAL → HIGH → MEDIUM → LOW) and by category (metadata mismatch, Syft configuration issue, release asset parity gap, documentation drift).
+3. **Plan Generation** — Creates a prioritized implementation plan with individual todos for each SBOM issue or validation gap, each including the specific metadata field, expected vs. actual value, fix steps, and validation gates.
+4. **User Review** — Exits plan mode to request user approval before implementation begins.
+5. **Execution Tracking** — Updates SQL-backed todo list as SBOM generation, post-processing, and release behavior are refined; validates consistency between local and release paths and against SPDX/CycloneDX schema.
+
+The agent stores audit results in the session workspace for reproducibility and maintains an audit trail linked to the SBOM generation plan.
 
 ## Skills & Prompts
 

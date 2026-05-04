@@ -12,8 +12,8 @@
 #define SALT_CLI_STATE_H
 
 #include "salt.h"
-#include "salt_cli_internal.h"
-#include "cli_output.h"
+#include "internal.h"
+#include "output.h"
 
 #include <stdbool.h>
 #include <stddef.h>

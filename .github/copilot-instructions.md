@@ -8,6 +8,22 @@ When a task touches only one domain, route directly to the matching specialist. 
 
 Use this guide together with `.github/instructions/*.instructions.md` and `.github/skills/*/SKILL.md`: routing decides who should do the work, instructions define file-level rules, and skills provide reusable workflows.
 
+## Audit-to-Plan Workflow
+
+Many specialist agents have corresponding audit skills that systematically scan their domain for weaknesses, code smells, or configuration issues. When these agents are invoked, they follow a unified audit-to-plan workflow:
+
+1. **Audit Discovery** — Agent invokes its domain audit skill to identify current state
+2. **Finding Prioritization** — Findings are grouped by severity and CWE/rule class
+3. **Plan Generation** — Structured implementation plan is created from findings
+4. **User Review** — Agent exits plan mode to show audit results and plan for approval
+5. **Execution Tracking** — SQL-backed todos with validation gates track implementation
+
+Agents with audit capabilities declare them in their frontmatter with:
+- `audit-skill` — name of the audit skill to invoke
+- `audit-scope` — default scope for audit (e.g., `src/`, `include/`)
+
+For details on this workflow and which agents support audits, see `.github/instructions/audit-to-plan.instructions.md`.
+
 ## Task Routing
 
 - Copilot customization files (`.github/agents`, `.github/instructions`, `.github/prompts`, `.github/skills`): use `Copilot Config Expert`

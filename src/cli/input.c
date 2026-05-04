@@ -4,11 +4,11 @@
  * CLI stream and input ingestion implementation.
  */
 
-#include "cli_input.h"
+#include "input.h"
 
-#include "cli_signal.h"
-#include "cli_stream.h"
-#include "cli_test_hooks.h"
+#include "signals.h"
+#include "stream.h"
+#include "test_hooks.h"
 
 #include <sodium.h>
 #include <stdint.h>

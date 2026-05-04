@@ -4,10 +4,10 @@
  * CMocka coverage for CLI parser helper paths and hook behavior.
  */
 
-#include "test_cli_shared.h"
-#include "test_suites.h"
+#include "../test_cli_shared.h"
+#include "../test_suites.h"
 
-#include "../src/cli_state.h"
+#include "../../src/cli/state.h"
 
 #include <setjmp.h>
 #include <stdarg.h>

@@ -4,11 +4,11 @@
  * CLI output preparation implementation.
  */
 
-#include "cli_prepare.h"
+#include "prepare.h"
 
-#include "cli_signal.h"
-#include "cli_stream.h"
-#include "cli_test_hooks.h"
+#include "signals.h"
+#include "stream.h"
+#include "test_hooks.h"
 
 #include <sodium.h>
 

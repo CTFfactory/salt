@@ -89,7 +89,7 @@ Fix: Add key_len parameter or use a typed key struct to make the invariant part 
 
 Severity: LOW
 Class: Error Propagation (CWE-701 / ERR-series)
-File: include/salt_cli_internal.h (line 17)
+File: include/cli/internal.h (line 17)
 Finding: parse_args() returns void; callers cannot detect parse failures without inspecting
          global state, creating an implicit coupling.
 Fix: Change return type to int; document 0 = success, negative = parse error.

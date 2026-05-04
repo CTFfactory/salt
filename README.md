@@ -282,7 +282,7 @@ Every API call below should include:
 - `Authorization: Bearer ${GITHUB_TOKEN}`
 - `X-GitHub-Api-Version: 2022-11-28`
 
-**API Version Policy**: This documentation and the example scripts reference GitHub REST API version `2022-11-28`, which is the current stable version for Actions Secrets endpoints as of 2026-04-30. Consult the [GitHub REST API versioning documentation](https://docs.github.com/en/rest/about-the-rest-api/api-versions) if newer versions introduce changes to request/response formats or required headers.
+**API Version Policy**: This documentation and the example scripts reference GitHub REST API version `2022-11-28`, which is the current stable version for Actions Secrets endpoints as of 2026-04-29. Consult the [GitHub REST API versioning documentation](https://docs.github.com/en/rest/about-the-rest-api/api-versions) if newer versions introduce changes to request/response formats or required headers.
 
 The examples below and the packaged `examples/set-*-secret.sh` scripts use a small helper plus process substitution (`-H @<(...)`) so `GITHUB_TOKEN` does not appear in `/proc/<pid>/cmdline`. The packaged scripts also accept a `SECRET_VALUE_FILE` environment variable so plaintext does not enter `/proc/<pid>/environ`; prefer it over `SECRET_VALUE` for real secrets.
 

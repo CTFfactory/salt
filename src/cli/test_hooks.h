@@ -7,8 +7,8 @@
 #ifndef SALT_CLI_TEST_HOOKS_H
 #define SALT_CLI_TEST_HOOKS_H
 
-#include "salt_test_internal.h"
-#include "cli_state.h"
+#include "../salt_test_internal.h"
+#include "state.h"
 
 #ifdef __cplusplus
 extern "C" {

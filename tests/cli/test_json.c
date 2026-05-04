@@ -8,8 +8,8 @@
 /* NOLINTNEXTLINE(bugprone-reserved-identifier) */
 #define _POSIX_C_SOURCE 200809L
 
-#include "test_cli_shared.h"
-#include "test_suites.h"
+#include "../test_cli_shared.h"
+#include "../test_suites.h"
 
 #include <setjmp.h>
 #include <stdarg.h>

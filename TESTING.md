@@ -116,12 +116,12 @@ When a bug is fixed, prefer adding or extending a deterministic cmocka
 regression so the failure stays reproducible outside a fuzz harness.
 
 The CLI cmocka surface is organized by behavior so changes stay localized:
-`tests/test_cli_contract.c` covers top-level CLI contract and option handling,
-`tests/test_cli_io.c` covers stdin/stdout and allocation paths,
-`tests/test_cli_json.c` covers strict JSON key parsing, JSON output
+`tests/cli/test_contract.c` covers top-level CLI contract and option handling,
+`tests/cli/test_io.c` covers stdin/stdout and allocation paths,
+`tests/cli/test_json.c` covers strict JSON key parsing, JSON output
 encoding, and UTF-8 validation for RFC 8259 compliance, and
-`tests/test_cli_runtime.c` covers signal, resource, and performance-smoke paths.
-Shared fixtures live in `tests/test_cli_support.c`.
+`tests/cli/test_runtime.c` covers signal, resource, and performance-smoke paths.
+Shared fixtures live in `tests/cli/test_support.c`.
 
 Fixture and mock infrastructure:
 

@@ -7,7 +7,7 @@
 #ifndef SALT_CLI_INPUT_H
 #define SALT_CLI_INPUT_H
 
-#include "cli_state.h"
+#include "state.h"
 
 #include <stdio.h>
 

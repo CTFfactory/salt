@@ -8,7 +8,7 @@
  * resident memory and scrubbed on release.
  */
 
-#include "cli_state.h"
+#include "state.h"
 
 #include <sodium.h>
 #include <stdlib.h>

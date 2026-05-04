@@ -8,18 +8,19 @@
  * - usage/version rendering
  * - salt_cli_run* orchestration
  *
- * Other helper logic lives in dedicated modules (src/cli_args.c, src/cli_input.c,
- * src/cli_prepare.c, src/cli_test_hooks.c, src/cli_state.c, src/cli_signal.c,
- * src/cli_stream.c, src/cli_parse.c, src/cli_output.c).
+ * Other helper logic lives in dedicated modules (src/cli/args.c,
+ * src/cli/input.c, src/cli/prepare.c, src/cli/test_hooks.c,
+ * src/cli/state.c, src/cli/signal.c, src/cli/stream.c,
+ * src/cli/parse.c, src/cli/output.c).
  */
 
-#include "cli_args.h"
-#include "cli_input.h"
-#include "cli_output.h"
-#include "cli_prepare.h"
-#include "cli_signal.h"
-#include "cli_state.h"
-#include "cli_stream.h"
+#include "cli/args.h"
+#include "cli/input.h"
+#include "cli/output.h"
+#include "cli/prepare.h"
+#include "cli/signals.h"
+#include "cli/state.h"
+#include "cli/stream.h"
 #include "salt.h"
 
 #include <sodium.h>

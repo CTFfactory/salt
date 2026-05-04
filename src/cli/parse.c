@@ -8,7 +8,7 @@
  */
 
 #include "salt.h"
-#include "salt_cli_internal.h"
+#include "internal.h"
 
 #include <stdarg.h>
 #include <string.h>

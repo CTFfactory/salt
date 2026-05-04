@@ -4,9 +4,9 @@
  * CLI argument parsing implementation.
  */
 
-#include "cli_args.h"
+#include "args.h"
 
-#include "cli_stream.h"
+#include "stream.h"
 
 #include <getopt.h>
 #include <string.h>

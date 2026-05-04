@@ -45,7 +45,7 @@
 "\xef\xbb\xbf"
 "\x00"
 
-# --- salt JSON key-object field names (case-sensitive in cli_parse.c) ---
+# --- salt JSON key-object field names (case-sensitive in parse.c) ---
 "\"key\""
 "\"key_id\""
 "\"key\":"

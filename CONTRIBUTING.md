@@ -53,7 +53,7 @@ make ci-fast           # Fast smoke gate (recommended default)
 make ci                # Full CI gate (before requesting review)
 ```
 
-**`make ci-fast`** (2-5 min): Runs `validate-copilot`, `actionlint`, `lint-suppressions`, `lint`, `test`, and `build`.  
+**`make ci-fast`** (2-5 min): Runs `validate-copilot`, `actionlint`, `lint-suppressions`, `lint`, `test`, and `build`.
 **`make ci`** (10-30 min): Full gate with sanitizers, valgrind, coverage, QA, fuzz regression, docs, and symbol audit.
 
 For complete testing documentation including test taxonomy, fuzzing workflows, coverage policy, and quality-control gates, see **[TESTING.md](TESTING.md)**.
@@ -131,7 +131,7 @@ If behavior changes, update all applicable docs in the same PR:
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
 - **man/salt.1** - Man page and CLI option reference (update `.TH` date field to ISO 8601 `YYYY-MM-DD` format when content changes)
 - **examples/** - GitHub Actions secret helper scripts and workflow integration patterns
-- **CONTRIBUTING.md / [SECURITY.md](SECURITY.md) / [AGENTS.md](AGENTS.md)** - When contributor, security, or repository-operating guidance changes
+- **[CONTRIBUTING.md](CONTRIBUTING.md) / [SECURITY.md](SECURITY.md) / [AGENTS.md](AGENTS.md)** - When contributor, security, or repository-operating guidance changes
 
 When updating **examples/** helper scripts, verify that they remain aligned with GitHub REST API guidance in README.md and maintain secret-name validation, size-limit enforcement, and safe credential handling patterns.
 

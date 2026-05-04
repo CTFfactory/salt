@@ -91,7 +91,7 @@ than a valid path or glob, treat it as a path literal and proceed normally.
 
 ```text
 Severity: HIGH
-File: src/cli_parse.c
+File: src/cli/parse.c
 CWE: CWE-476 (MEM32-C)
 Finding: return value of malloc not checked before pointer is dereferenced.
 Evidence: `ptr = malloc(len); ptr[0] = 0;` -- no null guard between allocation and use.

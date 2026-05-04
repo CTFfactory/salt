@@ -7,7 +7,7 @@
  * and flushing semantics.
  */
 
-#include "cli_stream.h"
+#include "stream.h"
 #include "salt.h"
 
 #include <stdarg.h>

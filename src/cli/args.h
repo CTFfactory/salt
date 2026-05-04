@@ -7,7 +7,7 @@
 #ifndef SALT_CLI_ARGS_H
 #define SALT_CLI_ARGS_H
 
-#include "cli_state.h"
+#include "state.h"
 
 #include <stddef.h>
 #include <stdio.h>

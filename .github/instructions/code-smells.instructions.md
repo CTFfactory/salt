@@ -32,7 +32,7 @@ If a smell rule conflicts with one of those files, the more specific instruction
 ## Coupler / change-preventer smells
 
 - **Shotgun surgery** — if a single behavior change requires edits in many unrelated files, the responsibility is scattered. Consolidate behind a single function or header.
-- **Inappropriate intimacy / leaky internals** — public headers in `include/` must not expose helpers meant for `src/` only. Internal helpers belong in `salt_cli_internal.h`.
+- **Inappropriate intimacy / leaky internals** — public headers in `include/` must not expose helpers meant for `src/` only. Internal helpers belong in `src/cli/internal.h` (compatibility shim: `include/cli/internal.h`).
 - **Feature envy** — a function that mostly manipulates fields of another module's struct should move to that module.
 - **Header bloat** — every public header symbol expands the ABI surface. Default to `static` in `.c` files; promote only when a second caller needs it.
 

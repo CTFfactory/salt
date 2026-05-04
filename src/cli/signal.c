@@ -11,8 +11,8 @@
 /* NOLINTNEXTLINE(bugprone-reserved-identifier) */
 #define _POSIX_C_SOURCE 200809L
 
-#include "cli_signal.h"
-#include "cli_stream.h"
+#include "signals.h"
+#include "stream.h"
 #include "salt.h"
 
 #include <signal.h>
