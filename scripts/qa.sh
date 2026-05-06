@@ -290,7 +290,7 @@ run_test_qa13() {
 run_test_qa14() {
     local id="qa-14" desc="Exactly 48 KB plaintext (GitHub limit) is accepted"
     local payload_file="${TMP_DIR}/payload48k"
-    dd if=/dev/zero bs=1 count=49152 2>/dev/null | tr '\0' 'A' > "$payload_file"
+    head -c 49152 /dev/zero | tr '\0' 'A' > "$payload_file"
     local rc
     rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" - < "$payload_file")"
     assert_exit_code       "$id" "$desc" 0 "$rc" || return
@@ -350,6 +350,7 @@ run_test_qa21() {
 run_test_qa22() {
     local id="qa-22" desc="Binary data (all 256 byte values) from stdin is accepted"
     local binary_file="${TMP_DIR}/binary256"
+    # Intentionally generate all byte values 0x00..0xFF (including NUL) to verify full binary stdin handling.
     awk 'BEGIN { for (i = 0; i < 256; ++i) printf "%c", i }' > "$binary_file"
     local rc
     rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" - < "$binary_file")"
@@ -403,7 +404,7 @@ run_test_qa32() {
 run_test_qa33() {
     local id="qa-33" desc="Excessive stream appended to key ingest limits safely rejecting memory exhaustion (CWE-400)"
     local oversized="${TMP_DIR}/oversized.key"
-    dd if=/dev/zero bs=1024 count=100 2>/dev/null > "$oversized"
+    dd if=/dev/zero bs=102400 count=1 2>/dev/null > "$oversized"
     local rc
     rc="$(run_salt_rc "$OUT" "$ERR" --key - 'hello' < "$oversized")"
     assert_exit_code       "$id" "$desc" 1 "$rc" || return
@@ -564,7 +565,7 @@ run_test_qa64() {
 run_test_qa65() {
     local id="qa-65" desc="--key-id exceeding 256 bytes exits 1 (CWE-119)"
     local long_id
-    long_id="$(dd if=/dev/zero bs=1 count=1000 2>/dev/null | tr '\0' 'A')"
+    long_id="$(head -c 1000 /dev/zero | tr '\0' 'A')"
     local rc
     rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" --key-id "$long_id" --output json 'hello')"
     assert_exit_code       "$id" "$desc" 1 "$rc" || return
@@ -898,7 +899,7 @@ run_test_qa94() {
     local id="qa-94" desc="Plaintext > 48 KB exits 1 with size error on stderr (CWE-119)"
     local oversized="${TMP_DIR}/oversized"
     # 49153 bytes = 48 KB + 1 byte over GitHub limit
-    dd if=/dev/zero bs=1 count=49153 2>/dev/null | tr '\0' 'B' > "$oversized"
+    head -c 49153 /dev/zero | tr '\0' 'B' > "$oversized"
     local rc
     rc="$(run_salt_rc "$OUT" "$ERR" --key "$PUB_KEY" - < "$oversized")"
     assert_exit_code    "$id" "$desc" 1 "$rc" || return

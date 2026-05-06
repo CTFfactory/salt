@@ -192,7 +192,7 @@ validate_count_threshold() {
   elif [[ "$format" == "cyclonedx" ]]; then
     actual_count=$(jq '.components | length' "$path")
   else
-    die "Unknown format: $format"
+    die "Unknown format: $format (expected: spdx or cyclonedx)"
   fi
 
   if [[ $actual_count -lt $min_count ]]; then
@@ -251,7 +251,22 @@ validate_spdx() {
   if jq -e '.files | any(.[]; type=="object" and .fileName == "")' "$path" >/dev/null; then
     die "$path contains empty SPDX fileName placeholder"
   fi
-  placeholder_file=$(jq -r 'first((.files // [])[] | select(type=="object") | . as $f | select((($f.checksums // []) | any((.algorithm=="SHA1" and .checksumValue == ("0"*40)) or (.algorithm=="SHA256" and .checksumValue == ("0"*64))))) | ($f.fileName // "")) // ""' "$path")
+  readonly PLACEHOLDER_FILE_JQ_FILTER='
+    first(
+      (.files // [])[]
+      | select(type=="object")
+      | . as $f
+      | select(
+          (($f.checksums // []) | any(
+            (.algorithm=="SHA1" and .checksumValue == ("0"*40))
+            or
+            (.algorithm=="SHA256" and .checksumValue == ("0"*64))
+          ))
+        )
+      | ($f.fileName // "")
+    ) // ""
+  '
+  placeholder_file=$(jq -r "$PLACEHOLDER_FILE_JQ_FILTER" "$path")
   if [[ -n "$placeholder_file" ]]; then
     die "$path:$placeholder_file contains placeholder zero checksum"
   fi
@@ -283,7 +298,7 @@ validate_spdx() {
     shipped_ids+=("$file_spdx_id")
   done
 
-  expected_hasfiles=$(printf '%s\n' "${shipped_ids[@]}" | jq -R . | jq -s .)
+  expected_hasfiles=$(printf '%s\n' "${shipped_ids[@]}" | jq -Rs 'split("\n")[:-1]')
   jq -e --argjson hf "$expected_hasfiles" '.packages | first(.[] | select(.name=="salt")) | (if has("hasFiles") then .hasFiles == $hf else true end)' "$path" >/dev/null || die "$path has unexpected salt hasFiles metadata"
   expected_verification=$(spdx_package_verification_code "$path" "$artifact" 'salt.1')
   jq -e --arg v "$expected_verification" '.packages | first(.[] | select(.name=="salt")) | .packageVerificationCode | type=="object" and .packageVerificationCodeValue == $v' "$path" >/dev/null || die "$path missing valid salt package verification code"

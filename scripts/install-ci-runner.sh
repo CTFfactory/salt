@@ -2,6 +2,7 @@
 set -euo pipefail
 
 expected_ubuntu_version="${SALT_CI_UBUNTU_VERSION:-24.04}"
+expected_ubuntu_codename="${SALT_CI_UBUNTU_CODENAME:-noble}"
 allow_dynamic_apt_repos="${SALT_CI_ALLOW_DYNAMIC_APT_REPOS:-0}"
 apt_pin_mode="${SALT_CI_APT_PIN_MODE:-major}"
 
@@ -57,9 +58,10 @@ if ((install_llvm_repo)); then
 
   llvm_keyring="/usr/share/keyrings/llvm.gpg"
   llvm_list="/etc/apt/sources.list.d/llvm.list"
+  apt_architecture="$(dpkg --print-architecture)"
   ubuntu_codename="${VERSION_CODENAME:-${UBUNTU_CODENAME:-}}"
-  if [[ "${ubuntu_codename}" != "noble" ]]; then
-    echo "ERROR: expected Ubuntu codename noble, found ${ubuntu_codename:-unknown}." >&2
+  if [[ "${ubuntu_codename}" != "${expected_ubuntu_codename}" ]]; then
+    echo "ERROR: expected Ubuntu codename ${expected_ubuntu_codename}, found ${ubuntu_codename:-unknown}." >&2
     exit 1
   fi
 
@@ -84,7 +86,7 @@ if ((install_llvm_repo)); then
   if ((missing_llvm_repo_entries)); then
     {
       for clang_version in "${clang_versions[@]}"; do
-        printf 'deb [arch=amd64 signed-by=%s] https://apt.llvm.org/noble/ llvm-toolchain-noble-%s main\n' "${llvm_keyring}" "${clang_version}"
+        printf 'deb [arch=%s signed-by=%s] https://apt.llvm.org/%s/ llvm-toolchain-%s-%s main\n' "${apt_architecture}" "${llvm_keyring}" "${expected_ubuntu_codename}" "${expected_ubuntu_codename}" "${clang_version}"
       done
     } | sudo tee "${llvm_list}" >/dev/null
   fi

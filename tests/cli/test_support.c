@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include <limits.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -36,10 +37,18 @@ struct failing_write_cookie {
 };
 
 FILE *test_tmpfile_checked(void) {
-    char path[] = "/tmp/salt-cli-test.XXXXXX";
+    const char *tmpdir = getenv("TMPDIR");
+    char path[PATH_MAX];
+    int path_len;
     int fd;
     FILE *stream;
 
+    if (tmpdir == NULL || tmpdir[0] == '\0') {
+        tmpdir = "/tmp";
+    }
+
+    path_len = snprintf(path, sizeof(path), "%s/%s", tmpdir, "salt-cli-test.XXXXXX");
+    assert_true(path_len > 0 && (size_t)path_len < sizeof(path));
     fd = mkstemp(path);
     assert_true(fd >= 0);
     assert_int_equal(unlink(path), 0);
@@ -274,7 +283,6 @@ int cli_test_teardown(void **state) {
     ctx = (cli_test_context *)(*state);
     assert_non_null(ctx);
 
-    g_cli_ctx = ctx;
     cli_expected_message = NULL;
     cli_expected_key = NULL;
     cli_fake_encoded = "ZW5jb2RlZA==";
@@ -378,5 +386,5 @@ int count_open_fds(void) {
     }
 
     closedir(dir);
-    return count;
+    return (count > 0) ? (count - 1) : 0;
 }
