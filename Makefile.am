@@ -13,12 +13,13 @@ $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/parse.c \
 $(top_srcdir)/src/cli/output.c $(top_srcdir)/src/cli/state.c \
 $(top_srcdir)/src/cli/signal.c $(top_srcdir)/src/cli/stream.c \
 $(top_srcdir)/src/salt.c
+SYMBOL_AUDIT_ALLOW = main salt_seal_base64 salt_seal_base64_keylen salt_seal_base64_with_plaintext_zeroing salt_seal_base64_with_plaintext_zeroing_keylen salt_required_base64_output_len salt_cli_run salt_cli_run_with_streams salt_cli_emit_output salt_cli_parse_key_input salt_cli_parse_key_json_object_strict salt_cli_trim_whitespace_inplace salt_cli_check_interrupted salt_cli_ensure_signal_handlers salt_cli_restore_signal_handlers salt_cli_flush_stream salt_cli_report_stream_status salt_cli_reset_interrupted salt_cli_resolve_effective_key_id salt_cli_set_error salt_cli_state_cleanup salt_cli_state_init salt_cli_write_stream salt_cli_args_parse_arguments salt_cli_input_load_key_input salt_cli_input_load_plaintext salt_cli_prepare_output
 TEST_SRCS = tests/test_main.c tests/test_salt.c \
 tests/cli/test_support.c tests/cli/test_contract.c \
 tests/cli/test_io.c tests/cli/test_json.c \
 tests/cli/test_runtime.c tests/cli/test_helpers.c \
 tests/cli/test_characterization.c tests/test_fuzz_regressions.c \
-src/salt.c src/cli/args.c src/cli/input.c src/cli/prepare.c src/cli/test_hooks.c src/cli/parse.c src/cli/output.c src/cli/state.c src/cli/signal.c src/cli/stream.c src/main.c
+$(SALT_SRCS)
 AUDIT_SRC_FILES = $(top_srcdir)/src/main.c $(top_srcdir)/src/cli/parse.c \
 $(top_srcdir)/src/cli/args.c $(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/output.c $(top_srcdir)/src/cli/state.c $(top_srcdir)/src/cli/signal.c \
 $(top_srcdir)/src/cli/stream.c $(top_srcdir)/src/salt.c
@@ -27,9 +28,7 @@ $(top_srcdir)/tests/cli/test_support.c $(top_srcdir)/tests/cli/test_contract.c \
 $(top_srcdir)/tests/cli/test_io.c $(top_srcdir)/tests/cli/test_json.c \
 $(top_srcdir)/tests/cli/test_runtime.c $(top_srcdir)/tests/cli/test_helpers.c \
 $(top_srcdir)/tests/cli/test_characterization.c $(top_srcdir)/tests/test_fuzz_regressions.c \
-$(top_srcdir)/src/salt.c $(top_srcdir)/src/cli/args.c $(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/parse.c \
-$(top_srcdir)/src/cli/output.c $(top_srcdir)/src/cli/state.c $(top_srcdir)/src/cli/signal.c \
-$(top_srcdir)/src/cli/stream.c $(top_srcdir)/src/main.c
+$(SALT_SRC_FILES)
 TEST_HEADER_FILES = $(top_srcdir)/src/cli/internal.h \
 $(top_srcdir)/src/cli/args.h $(top_srcdir)/src/cli/input.h $(top_srcdir)/src/cli/prepare.h $(top_srcdir)/src/cli/test_hooks.h $(top_srcdir)/src/cli/output.h \
 $(top_srcdir)/src/cli/state.h $(top_srcdir)/src/cli/signals.h $(top_srcdir)/src/cli/stream.h \
@@ -51,6 +50,7 @@ EXTRA_DIST = \
 	assets/coverage/solarized-light.css \
 	assets/coverage/solarized-dark.css \
 	$(wildcard scripts/*.sh) \
+	$(wildcard scripts/*.py) \
 	$(wildcard scripts/*.c) \
 	$(wildcard examples/*.sh) \
 	$(wildcard bench/*.[ch]) \
@@ -192,9 +192,8 @@ CPPCHECK ?= cppcheck
 SHELLCHECK ?= shellcheck
 CODESPELL ?= codespell
 CODESPELL_ARGS ?= --check-filenames --quiet-level=2 --ignore-words-list=bu,crasher,crashers --skip=build,bin,.git,fuzz/corpus,terraform,autom4te.cache,build-aux
-FORMAT_SRCS = $(top_srcdir)/src/main.c $(top_srcdir)/src/cli/args.c $(top_srcdir)/src/cli/input.c $(top_srcdir)/src/cli/prepare.c $(top_srcdir)/src/cli/test_hooks.c $(top_srcdir)/src/cli/parse.c $(top_srcdir)/src/cli/output.c \
-               $(top_srcdir)/src/cli/state.c $(top_srcdir)/src/cli/signal.c $(top_srcdir)/src/cli/stream.c \
-               $(top_srcdir)/src/salt.c $(top_srcdir)/src/cli/args.h $(top_srcdir)/src/cli/input.h $(top_srcdir)/src/cli/prepare.h $(top_srcdir)/src/cli/test_hooks.h $(top_srcdir)/src/salt_test_internal.h \
+FORMAT_SRCS = $(SALT_SRC_FILES) \
+               $(top_srcdir)/src/cli/args.h $(top_srcdir)/src/cli/input.h $(top_srcdir)/src/cli/prepare.h $(top_srcdir)/src/cli/test_hooks.h $(top_srcdir)/src/salt_test_internal.h \
                $(top_srcdir)/include/salt.h $(top_srcdir)/src/cli/internal.h \
                $(top_srcdir)/fuzz/fuzz_common.h \
                $(top_srcdir)/tests/test_salt.c $(top_srcdir)/tests/test_main.c \
@@ -394,7 +393,7 @@ coverage-check: $(COV_BIN)
 	./$(COV_BIN)
 	@gcovr --root $(top_srcdir) --object-directory . --filter '(.*/)?src/(salt|main)\.c$$' --exclude-function-lines --merge-mode-functions=merge-use-line-min --txt-summary > gcovr.txt
 	@rm -f *.gcov.json.gz && gcov -j -a -o . salt_cov.o main_cov.o >/dev/null
-	@python3 -c 'exec("""import glob\nimport gzip\nimport json\nimport sys\nexcluded_functions = {\"salt_cli_fread_default\", \"salt_cli_parse_arguments\", \"salt_secure_release\"}\ncovered = 0\ntotal = 0\nfor path in glob.glob(\"*.gcov.json.gz\"):\n    with gzip.open(path, \"rt\", encoding=\"utf-8\") as handle:\n        data = json.load(handle)\n    for file_entry in data.get(\"files\", []):\n        file_path = file_entry.get(\"file\", \"\")\n        if not (file_path.endswith(\"src/main.c\") or file_path.endswith(\"src/salt.c\")):\n            continue\n        for function in file_entry.get(\"functions\", []):\n            if function.get(\"name\") in excluded_functions:\n                continue\n            total += int(function.get(\"blocks\", 0))\n            covered += int(function.get(\"blocks_executed\", 0))\nif total <= 0:\n    print(\"FAIL: unable to determine block coverage\")\n    sys.exit(1)\nprint(f\"blocks: {(covered * 100.0) / total:.1f}% ({covered} out of {total})\")\n""")' > gcov_blocks.txt
+	@python3 $(top_srcdir)/scripts/gcov_blocks.py > gcov_blocks.txt
 	@cat gcovr.txt
 	@cat gcov_blocks.txt
 	@line_stats=$$(awk '/^lines:/ {gsub(/%/, "", $$2); gsub(/[()]/, "", $$3); gsub(/[()]/, "", $$6); print $$2, $$3, $$6}' gcovr.txt); \
@@ -814,8 +813,7 @@ $(AUDIT_STATIC_BIN): $(SALT_SRCS) include/salt.h
 
 .PHONY: symbol-audit
 symbol-audit: $(AUDIT_BIN) $(AUDIT_STATIC_BIN)
-	@SYMBOL_AUDIT_ALLOW="main salt_seal_base64 salt_seal_base64_keylen salt_seal_base64_with_plaintext_zeroing salt_seal_base64_with_plaintext_zeroing_keylen salt_required_base64_output_len salt_cli_run salt_cli_run_with_streams salt_cli_emit_output salt_cli_parse_key_input salt_cli_parse_key_json_object_strict salt_cli_trim_whitespace_inplace salt_cli_check_interrupted salt_cli_ensure_signal_handlers salt_cli_restore_signal_handlers salt_cli_flush_stream salt_cli_report_stream_status salt_cli_reset_interrupted salt_cli_resolve_effective_key_id salt_cli_set_error salt_cli_state_cleanup salt_cli_state_init salt_cli_write_stream salt_cli_args_parse_arguments salt_cli_input_load_key_input salt_cli_input_load_plaintext salt_cli_prepare_output"; \
-	set -e; \
+	@set -e; \
 	for bin in $(AUDIT_BIN) $(AUDIT_STATIC_BIN); do \
 	echo "==> symbol-audit $$bin"; \
 	leaked=$$(nm --defined-only --extern-only "$$bin" 2>/dev/null \
@@ -830,7 +828,7 @@ if [ -n "$$leaked" ]; then \
 	unexpected=$$(nm --defined-only --extern-only "$$bin" 2>/dev/null \
 	  | awk '$$2=="T" {print $$3}' \
 	  | grep -E '^(salt_|main$$)' \
-	  | grep -vxF $$(echo "$$SYMBOL_AUDIT_ALLOW" | tr ' ' '\n' | sed 's/^/-e /') || true); \
+	  | grep -vxF $$(echo "$(SYMBOL_AUDIT_ALLOW)" | tr ' ' '\n' | sed 's/^/-e /') || true); \
 if [ -n "$$unexpected" ]; then \
 	echo "FAIL: unexpected exported symbols in $$bin:"; \
 	echo "$$unexpected"; \
