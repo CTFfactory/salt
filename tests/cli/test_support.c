@@ -23,7 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
-#include <limits.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -37,9 +36,13 @@ struct failing_write_cookie {
 };
 
 FILE *test_tmpfile_checked(void) {
+    static const char suffix[] = "salt-cli-test.XXXXXX";
     const char *tmpdir = getenv("TMPDIR");
-    char path[PATH_MAX];
-    int path_len;
+    size_t tmpdir_len;
+    size_t suffix_len = sizeof(suffix) - 1U;
+    size_t path_len;
+    char *path;
+    int need_sep;
     int fd;
     FILE *stream;
 
@@ -47,11 +50,27 @@ FILE *test_tmpfile_checked(void) {
         tmpdir = "/tmp";
     }
 
-    path_len = snprintf(path, sizeof(path), "%s/%s", tmpdir, "salt-cli-test.XXXXXX");
-    assert_true(path_len > 0 && (size_t)path_len < sizeof(path));
+    tmpdir_len = strlen(tmpdir);
+    need_sep = (tmpdir_len == 0U || tmpdir[tmpdir_len - 1U] != '/') ? 1 : 0;
+    assert_true(tmpdir_len <= SIZE_MAX - suffix_len - (size_t)need_sep - 1U);
+    path_len = tmpdir_len + (size_t)need_sep + suffix_len + 1U;
+    path = (char *)malloc(path_len);
+    assert_non_null(path);
+
+    for (size_t i = 0U; i < tmpdir_len; ++i) {
+        path[i] = tmpdir[i];
+    }
+    if (need_sep != 0) {
+        path[tmpdir_len] = '/';
+    }
+    for (size_t i = 0U; i <= suffix_len; ++i) {
+        path[tmpdir_len + (size_t)need_sep + i] = suffix[i];
+    }
+
     fd = mkstemp(path);
     assert_true(fd >= 0);
     assert_int_equal(unlink(path), 0);
+    free(path);
 
     stream = fdopen(fd, "w+");
     if (stream == NULL) {

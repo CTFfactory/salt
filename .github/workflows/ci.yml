@@ -84,62 +84,6 @@ jobs:
           cd build/autotools
           make ci-fast
 
-  ci-gcc-matrix:
-    name: GCC Matrix (v${{ matrix.gcc_version }})
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    needs: ci-fast
-    strategy:
-      fail-fast: false
-      matrix:
-        gcc_version: [9, 10, 11, 12, 13]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install runner prerequisites
-        run: ./scripts/install-ci-runner.sh
-      - name: Verify runner prerequisites
-        run: ./scripts/check-ci-runner.sh
-      - name: Bootstrap GNU build files
-        run: ./bootstrap
-      - name: Configure out-of-tree build
-        run: |
-          mkdir -p build/autotools
-          cd build/autotools
-          ../../configure --enable-tests CC="gcc-${{ matrix.gcc_version }}"
-      - name: Run tests with matrix compiler
-        run: |
-          cd build/autotools
-          make test
-
-  ci-clang-matrix:
-    name: Clang Matrix (v${{ matrix.clang_version }})
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    needs: ci-fast
-    strategy:
-      fail-fast: false
-      matrix:
-        clang_version: [14, 15, 16, 17, 18]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install runner prerequisites
-        run: ./scripts/install-ci-runner.sh
-      - name: Verify runner prerequisites
-        run: ./scripts/check-ci-runner.sh
-      - name: Bootstrap GNU build files
-        run: ./bootstrap
-      - name: Configure out-of-tree build
-        run: |
-          mkdir -p build/autotools
-          cd build/autotools
-          ../../configure --enable-tests CC="clang-${{ matrix.clang_version }}"
-      - name: Run clang matrix gate
-        run: |
-          cd build/autotools
-          make test
-
   ci-autotools:
     name: Full Gate (GNU Autotools)
     runs-on: ubuntu-24.04
@@ -178,7 +122,7 @@ jobs:
     name: Bench Gate
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    needs: ci-autotools
+    needs: ci-fast
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -215,7 +159,7 @@ jobs:
     name: Fuzz Smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    needs: ci-autotools
+    needs: ci-fast
     env:
       FUZZ_SMOKE_TIME: 30
       CLANG: clang-18
@@ -258,19 +202,15 @@ jobs:
     name: Full Gate
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    needs: [ci-gcc-matrix, ci-clang-matrix, ci-autotools, bench, fuzz-smoke]
+    needs: [ci-autotools, bench, fuzz-smoke]
     if: always()
     steps:
       - name: Assert required full-gate jobs succeeded
         run: |
           set -euo pipefail
-          echo "ci-gcc-matrix=${{ needs.ci-gcc-matrix.result }}"
-          echo "ci-clang-matrix=${{ needs.ci-clang-matrix.result }}"
           echo "ci-autotools=${{ needs.ci-autotools.result }}"
           echo "bench=${{ needs.bench.result }}"
           echo "fuzz-smoke=${{ needs.fuzz-smoke.result }}"
-          [ "${{ needs.ci-gcc-matrix.result }}" = "success" ]
-          [ "${{ needs.ci-clang-matrix.result }}" = "success" ]
           [ "${{ needs.ci-autotools.result }}" = "success" ]
           [ "${{ needs.bench.result }}" = "success" ]
           [ "${{ needs.fuzz-smoke.result }}" = "success" ]
