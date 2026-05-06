@@ -988,6 +988,8 @@ codeql: codeql-build codeql-analyze
 clean-local:
 	-rm -rf $(CODEQL_DB) $(CODEQL_DB)*
 	-rm -f $(CODEQL_OUTPUT) codeql-results*.csv
+	-rm -rf $(COVERAGE_HTML_DIR)
+	-rm -f ci.log
 
 # CI Gates
 # ============================================================================
@@ -1015,9 +1017,12 @@ clean-fuzz:
 clean-fuzz-all:
 	rm -rf $(FUZZ_STATE_DIR)
 
-DISTCLEAN_LOCAL_DIRS = $(CODEQL_DB) $(FUZZ_STATE_DIR) $(BENCH_RESULTS_DIR) $(PACKAGE_DIR) $(SBOM_DIR) scan-build-out \
+DISTCLEAN_LOCAL_DIRS = $(CODEQL_DB) $(FUZZ_STATE_DIR) $(BENCH_RESULTS_DIR) $(PACKAGE_DIR) $(SBOM_DIR) $(COVERAGE_HTML_DIR) scan-build-out \
                        src/.deps src/cli/.deps tests/.deps tests/cli/.deps
-DISTCLEAN_LOCAL_FILES = $(CODEQL_OUTPUT) gcovr.txt gcov_blocks.txt
+DISTCLEAN_LOCAL_FILES = $(CODEQL_OUTPUT) gcovr.txt gcov_blocks.txt ci.log
+DISTCLEAN_BUILD_ROOT_DIRS = $(top_srcdir)/build/gpg-release-secrets \
+                            $(top_srcdir)/build/gpg-release-rsa \
+                            $(top_srcdir)/build/gpg-release-ecc
 DISTCLEAN_REPO_DIRS = $(top_srcdir)/bin $(top_srcdir)/build-autotools \
                       $(top_srcdir)/build-test $(top_srcdir)/.fuzz $(top_srcdir)/terraform \
                       $(top_srcdir)/autom4te.cache $(top_srcdir)/build-aux \
@@ -1038,6 +1043,8 @@ DISTCLEAN_REPO_FILES = $(top_srcdir)/salt-demo.gif $(top_srcdir)/salt-demo.mp4 \
 distclean-local:
 	rm -rf $(DISTCLEAN_LOCAL_DIRS)
 	rm -f $(DISTCLEAN_LOCAL_FILES)
+	rm -rf $(DISTCLEAN_BUILD_ROOT_DIRS)
+	-rmdir --ignore-fail-on-non-empty $(top_srcdir)/build 2>/dev/null || true
 	rm -f $(ACTIONLINT_BIN) $(SYFT_BIN) $(PARLAY_BIN) $(GRYPE_BIN) $(NFPM_BIN)
 	-rmdir --ignore-fail-on-non-empty tools src/cli tests/cli src tests 2>/dev/null || true
 	@if test "$(abs_top_builddir)" = "$(abs_top_srcdir)"; then \
