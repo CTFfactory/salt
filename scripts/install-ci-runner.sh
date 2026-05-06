@@ -56,13 +56,23 @@ if ((install_llvm_repo)); then
       | sudo tee "${llvm_keyring}" >/dev/null
   fi
 
-  if [[ ! -f "${llvm_list}" ]] || ! grep -Fq "llvm-toolchain-noble-14 main" "${llvm_list}" || ! grep -Fq "llvm-toolchain-noble-15 main" "${llvm_list}" || ! grep -Fq "llvm-toolchain-noble-16 main" "${llvm_list}" || ! grep -Fq "llvm-toolchain-noble-17 main" "${llvm_list}" || ! grep -Fq "llvm-toolchain-noble-18 main" "${llvm_list}"; then
+  missing_llvm_repo_entries=0
+  if [[ ! -f "${llvm_list}" ]]; then
+    missing_llvm_repo_entries=1
+  else
+    for clang_version in "${clang_versions[@]}"; do
+      if ! grep -Fq "llvm-toolchain-noble-${clang_version} main" "${llvm_list}"; then
+        missing_llvm_repo_entries=1
+        break
+      fi
+    done
+  fi
+
+  if ((missing_llvm_repo_entries)); then
     {
-      printf 'deb [arch=amd64 signed-by=%s] https://apt.llvm.org/noble/ llvm-toolchain-noble-14 main\n' "${llvm_keyring}"
-      printf 'deb [arch=amd64 signed-by=%s] https://apt.llvm.org/noble/ llvm-toolchain-noble-15 main\n' "${llvm_keyring}"
-      printf 'deb [arch=amd64 signed-by=%s] https://apt.llvm.org/noble/ llvm-toolchain-noble-16 main\n' "${llvm_keyring}"
-      printf 'deb [arch=amd64 signed-by=%s] https://apt.llvm.org/noble/ llvm-toolchain-noble-17 main\n' "${llvm_keyring}"
-      printf 'deb [arch=amd64 signed-by=%s] https://apt.llvm.org/noble/ llvm-toolchain-noble-18 main\n' "${llvm_keyring}"
+      for clang_version in "${clang_versions[@]}"; do
+        printf 'deb [arch=amd64 signed-by=%s] https://apt.llvm.org/noble/ llvm-toolchain-noble-%s main\n' "${llvm_keyring}" "${clang_version}"
+      done
     } | sudo tee "${llvm_list}" >/dev/null
   fi
 

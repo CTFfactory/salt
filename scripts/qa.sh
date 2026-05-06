@@ -1233,8 +1233,8 @@ run_test_qa87
 run_test_qa88
 run_test_qa88a
 run_test_qa88b
-    run_test_qa88c
-    run_test_qa88d
+run_test_qa88c
+run_test_qa88d
 run_test_qa89
 run_test_qa89a
 run_test_qa89b
@@ -1265,7 +1265,7 @@ run_test_qa120
 run_test_qa121
 run_test_qa122
 run_test_qa123
-    run_test_qa124
+run_test_qa124
 
 TOTAL=$(( PASS_COUNT + FAIL_COUNT ))
 printf '\n'

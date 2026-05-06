@@ -197,7 +197,7 @@ function threshold_for(name, metric, fallback,    i) {
     }
     return fallback
 }
-function extract(line, key,    re, m, s, e, val) {
+function extract(line, key,    re, m, s, e, val, rest) {
     re = "\"" key "\":"
     m = index(line, re)
     if (m == 0) return ""
