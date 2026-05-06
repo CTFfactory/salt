@@ -17,7 +17,7 @@ readonly LIBSODIUM_HOMEPAGE='https://libsodium.org'
 readonly LIBSODIUM_PURL_PREFIX='pkg:generic/libsodium@'
 
 usage() {
-  printf 'Usage: %s [--spdx PATH:ARTIFACT] [--cyclonedx PATH:ARTIFACT] [--salt-version VERSION] [--ubuntu-deps PATH] [--syft-version VERSION] [--parlay-version VERSION] [--verify-deterministic] [--component-count-min N]\n' "${0##*/}" >&2
+  printf 'Usage: %s [--spdx PATH:ARTIFACT] [--cyclonedx PATH:ARTIFACT] [--salt-version VERSION] [--ubuntu-deps PATH] [--syft-version VERSION] [--parlay-version VERSION] [--verify-deterministic] [--spdx-package-count-min N] [--cyclonedx-component-count-min N]\n' "${0##*/}" >&2
   exit 2
 }
 
@@ -32,7 +32,8 @@ ubuntu_deps_path=''
 syft_version=''
 parlay_version=''
 verify_deterministic=false
-component_count_min=90
+spdx_package_count_min=2
+cyclonedx_component_count_min=90
 declare -a spdx_specs=()
 declare -a cdx_specs=()
 
@@ -72,9 +73,14 @@ while (($# > 0)); do
       verify_deterministic=true
       shift 1
       ;;
-    --component-count-min)
+    --spdx-package-count-min)
       sbom_require_option_value "$#" "$1"
-      component_count_min="$2"
+      spdx_package_count_min="$2"
+      shift 2
+      ;;
+    --cyclonedx-component-count-min)
+      sbom_require_option_value "$#" "$1"
+      cyclonedx_component_count_min="$2"
       shift 2
       ;;
     --help|-h)
@@ -170,8 +176,8 @@ verify_cyclonedx_deterministic() {
 }
 
 # Validate minimum component count in SBOM
-validate_component_count() {
-  local path="$1" format="$2" min_count="$3"
+validate_count_threshold() {
+  local path="$1" format="$2" min_count="$3" count_label="$4"
   [[ -f "$path" ]] || die "$path: No such file"
 
   local actual_count
@@ -184,9 +190,9 @@ validate_component_count() {
   fi
 
   if [[ $actual_count -lt $min_count ]]; then
-    die "$path: component count $actual_count is below minimum $min_count"
+    die "$path: $count_label count $actual_count is below minimum $min_count"
   fi
-  printf 'INFO: %s has %d components (minimum: %d)\n' "$path" "$actual_count" "$min_count" >&2
+  printf 'INFO: %s has %d %s (minimum: %d)\n' "$path" "$actual_count" "$count_label" "$min_count" >&2
 }
 
 validate_spdx() {
@@ -352,7 +358,7 @@ validate_cyclonedx() {
 for spec in "${spdx_specs[@]}"; do
   sbom_parse_path_artifact "$spec" path artifact
   validate_spdx "$path" "$artifact" "$salt_version"
-  validate_component_count "$path" "spdx" "$component_count_min"
+  validate_count_threshold "$path" "spdx" "$spdx_package_count_min" "packages"
   if [[ "$verify_deterministic" == "true" ]]; then
     verify_spdx_deterministic "$path"
   fi
@@ -360,7 +366,7 @@ done
 for spec in "${cdx_specs[@]}"; do
   sbom_parse_path_artifact "$spec" path artifact
   validate_cyclonedx "$path" "$artifact" "$salt_version"
-  validate_component_count "$path" "cyclonedx" "$component_count_min"
+  validate_count_threshold "$path" "cyclonedx" "$cyclonedx_component_count_min" "components"
   if [[ "$verify_deterministic" == "true" ]]; then
     verify_cyclonedx_deterministic "$path"
   fi

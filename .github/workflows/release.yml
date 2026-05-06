@@ -220,7 +220,7 @@ jobs:
           ./scripts/add-ubuntu-provenance-to-sbom.sh --deps ubuntu-build-provenance.json salt-linux-amd64.cyclonedx.json salt-static-linux-amd64.cyclonedx.json
           cd build/autotools
           make --no-print-directory sbom-parlay-run \
-            PARLAY_BIN="${PWD}/../tools/parlay" \
+            PARLAY_BIN="../tools/parlay" \
             PARLAY_SBOMS="../../salt-linux-amd64.spdx.json ../../salt-static-linux-amd64.spdx.json ../../salt-linux-amd64.cyclonedx.json ../../salt-static-linux-amd64.cyclonedx.json" \
             PARLAY_SNYK_ENRICH="${PARLAY_SNYK_ENRICH}"
           cd ../..
