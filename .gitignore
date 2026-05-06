@@ -83,3 +83,7 @@ m4/lt~obsolete.m4
 # build artifacts
 salt
 salt-static
+
+# Python bytecode cache
+__pycache__/
+*.pyc
