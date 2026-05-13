@@ -20,6 +20,19 @@ AC_USE_SYSTEM_EXTENSIONS
 AC_CANONICAL_HOST
 
 AC_PROG_CC
+dnl Autoconf does not provide AC_PROG_CC_C17 here, so fail early if the
+dnl repository-wide -std=c17 flag would be rejected by the selected compiler.
+AC_CACHE_CHECK([whether $CC supports -std=c17], [salt_cv_prog_cc_std_c17],
+  [salt_save_CFLAGS=$CFLAGS
+   CFLAGS="$CFLAGS -std=c17"
+   AC_COMPILE_IFELSE(
+     [AC_LANG_PROGRAM([], [[]])],
+     [salt_cv_prog_cc_std_c17=yes],
+     [salt_cv_prog_cc_std_c17=no])
+   CFLAGS=$salt_save_CFLAGS])
+AS_IF(
+  [test "x$salt_cv_prog_cc_std_c17" != "xyes"],
+  [AC_MSG_ERROR([the selected C compiler must support -std=c17])])
 AM_PROG_AR
 AC_PROG_INSTALL
 AC_PATH_PROG([STRIP], [strip], [:])
@@ -84,7 +97,8 @@ case "$host_os" in
     TARGET_LDFLAGS=""
     ;;
   mingw32 | mingw64 | cygwin*)
-    # Windows (MinGW cross-compile): Set Windows-specific flags
+    # Windows (MinGW cross-compile): Set Windows-specific flags.
+    # _WIN32_WINNT=0x0601 corresponds to Windows 7.
     TARGET_CFLAGS="-D_WIN32_WINNT=0x0601"
     TARGET_LDFLAGS=""
     ;;
@@ -140,8 +154,11 @@ AS_IF(
   [
     AC_CHECK_HEADERS([sodium.h], [], [AC_MSG_ERROR([libsodium headers are required (set CPPFLAGS/LDFLAGS if installed in a non-default prefix)])])
     AC_CHECK_LIB([sodium], [sodium_init], [SODIUM_LIBS="-lsodium"], [AC_MSG_ERROR([libsodium library is required (set CPPFLAGS/LDFLAGS if installed in a non-default prefix)])])
-    dnl Enforce >= 1.0.18 via compile-time version macros (SODIUM_LIBRARY_VERSION_MAJOR==10,
-    dnl MINOR>=3 for 1.0.18). This catches the case where pkg-config is absent.
+    dnl Enforce >= 1.0.18 via compile-time version macros. In libsodium,
+    dnl SODIUM_LIBRARY_VERSION_MAJOR encodes the "1.0" line as 10, and
+    dnl SODIUM_LIBRARY_VERSION_MINOR tracks the patch level for that line
+    dnl (so 1.0.18 corresponds to MAJOR=10, MINOR=3). Reject anything below
+    dnl that threshold. This catches the case where pkg-config is absent.
     AC_COMPILE_IFELSE(
       [AC_LANG_PROGRAM([[#include <sodium.h>]],
         [[
@@ -176,10 +193,15 @@ AS_IF(
         dnl cmocka.h requires <stdarg.h>, <stddef.h>, and <setjmp.h> to be
         dnl pre-included (it uses those types without pulling them in itself,
         dnl matching its documented include order).
-        AC_CHECK_HEADERS([cmocka.h], [], [AC_MSG_ERROR([cmocka headers are required for tests (set CPPFLAGS/LDFLAGS if installed in a non-default prefix)])],
-          [[#include <stdarg.h>
+        dnl Keep these pre-includes centralized so they are not accidentally
+        dnl dropped during maintenance; omitting them can break header checks.
+        CMOCKA_HEADER_PREINCLUDES='
+#include <stdarg.h>
 #include <stddef.h>
-#include <setjmp.h>]])
+#include <setjmp.h>
+'
+        AC_CHECK_HEADERS([cmocka.h], [], [AC_MSG_ERROR([cmocka headers are required for tests (set CPPFLAGS/LDFLAGS if installed in a non-default prefix)])],
+          [$CMOCKA_HEADER_PREINCLUDES])
         AC_CHECK_LIB([cmocka], [_cmocka_run_group_tests], [CMOCKA_LIBS="-lcmocka"], [AC_MSG_ERROR([cmocka library is required for tests (set CPPFLAGS/LDFLAGS if installed in a non-default prefix)])])
         dnl Enforce >= 1.1.5 via symbol probe: cmocka_set_test_filter was added in 1.1.5.
         dnl This catches the case where pkg-config is absent.

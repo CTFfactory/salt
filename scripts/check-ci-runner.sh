@@ -84,7 +84,7 @@ if ((${#missing_cmds[@]} > 0)) || ((${#missing_pkg_config[@]} > 0)); then
       echo "Missing pkg-config modules:"
       printf '  - %s\n' "${missing_pkg_config[@]}"
     fi
-    echo "Provision required packages from scripts/install-ci-runner.sh or scripts/ci-runner-ubuntu22-ansible.yml."
+    echo "Provision required packages from scripts/install-ci-runner.sh."
   } >&2
   exit 1
 fi
