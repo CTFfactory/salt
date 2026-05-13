@@ -20,6 +20,21 @@ AC_USE_SYSTEM_EXTENSIONS
 AC_CANONICAL_HOST
 
 AC_PROG_CC
+dnl Autoconf does not provide AC_PROG_CC_C17 here, so fail early if the
+dnl repository-wide -std=c17 flag would be rejected by the selected compiler.
+AC_LANG_PUSH([C])
+AC_CACHE_CHECK([whether $CC supports -std=c17], [salt_cv_prog_cc_std_c17],
+  [salt_save_CFLAGS=$CFLAGS
+   CFLAGS="$CFLAGS -std=c17"
+   AC_COMPILE_IFELSE(
+     [AC_LANG_PROGRAM([], [[]])],
+     [salt_cv_prog_cc_std_c17=yes],
+     [salt_cv_prog_cc_std_c17=no])
+   CFLAGS=$salt_save_CFLAGS])
+AC_LANG_POP([C])
+AS_IF(
+  [test "x$salt_cv_prog_cc_std_c17" != "xyes"],
+  [AC_MSG_ERROR([the selected C compiler must support -std=c17])])
 AM_PROG_AR
 AC_PROG_INSTALL
 AC_PATH_PROG([STRIP], [strip], [:])
